@@ -1,0 +1,39 @@
+server:
+  port: 6080
+
+spring:
+  application:
+    name: api-gateway
+
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:6088}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:6060/realms/my-bank}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:6060/realms/my-bank/protocol/openid-connect/certs}
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: true
+              lower-case-service-id: true
+          routes:
+            - id: account-service
+              uri: lb://account-service
+              predicates:
+                - Path=/accounts/**
+            - id: transfer-service
+              uri: lb://transfer-service
+              predicates:
+                - Path=/transfers/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:6071/eureka/
