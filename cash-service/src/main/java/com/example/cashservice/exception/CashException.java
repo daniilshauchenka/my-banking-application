@@ -1,8 +1,7 @@
 package com.example.cashservice.exception;
 
-public class CashException extends RuntimeException {
+import lombok.experimental.StandardException;
 
-    public CashException(String message) {
-        super(message);
-    }
+@StandardException
+public class CashException extends RuntimeException {
 }

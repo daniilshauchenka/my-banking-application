@@ -8,39 +8,36 @@ import com.example.transferservice.exception.TransferException;
 import com.example.transferservice.model.TransferRecord;
 import com.example.transferservice.model.TransferStatus;
 import com.example.transferservice.repository.TransferRecordRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class TransferService {
 
     private final AccountClient accountClient;
     private final TransferRecordRepository transferRecordRepository;
 
-    public TransferService(AccountClient accountClient, TransferRecordRepository transferRecordRepository) {
-        this.accountClient = accountClient;
-        this.transferRecordRepository = transferRecordRepository;
-    }
-
     public TransferResponse transfer(TransferRequest request) {
-        if (request.fromLogin().equals(request.toLogin())) {
+        if (request.fromAccountId().equals(request.toAccountId())) {
             saveRecord(request, TransferStatus.FAILED, "Sender and receiver accounts must be different");
             throw new TransferException("Sender and receiver accounts must be different");
         }
 
         try {
-            AccountDto fromAccount = accountClient.withdraw(request.fromLogin(), request.amount());
+            AccountDto fromAccount = accountClient.withdraw(request.fromAccountId(), request.amount());
             AccountDto toAccount;
             try {
-                toAccount = accountClient.deposit(request.toLogin(), request.amount());
+                toAccount = accountClient.deposit(request.toAccountId(), request.amount());
             } catch (RuntimeException exception) {
-                accountClient.deposit(request.fromLogin(), request.amount());
+                accountClient.deposit(request.fromAccountId(), request.amount());
                 throw exception;
             }
 
             saveRecord(request, TransferStatus.COMPLETED, null);
             return new TransferResponse(
-                    request.fromLogin(),
-                    request.toLogin(),
+                    request.fromAccountId(),
+                    request.toAccountId(),
                     request.amount(),
                     fromAccount.balance(),
                     toAccount.balance()
@@ -52,12 +49,12 @@ public class TransferService {
     }
 
     private void saveRecord(TransferRequest request, TransferStatus status, String errorMessage) {
-        transferRecordRepository.save(new TransferRecord(
-                request.fromLogin(),
-                request.toLogin(),
-                request.amount(),
-                status,
-                errorMessage
-        ));
+        transferRecordRepository.save(TransferRecord.builder()
+                .fromAccountId(request.fromAccountId())
+                .toAccountId(request.toAccountId())
+                .amount(request.amount())
+                .status(status)
+                .errorMessage(errorMessage)
+                .build());
     }
 }

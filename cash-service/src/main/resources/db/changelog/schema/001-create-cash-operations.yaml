@@ -14,8 +14,8 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: login
-                  type: varchar(64)
+                  name: account_id
+                  type: bigint
                   constraints:
                     nullable: false
               - column:

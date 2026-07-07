@@ -8,23 +8,33 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
 @Table(name = "transfer_records")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class TransferRecord {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "from_login", nullable = false, length = 64)
-    private String fromLogin;
+    @Column(name = "from_account_id", nullable = false)
+    private Long fromAccountId;
 
-    @Column(name = "to_login", nullable = false, length = 64)
-    private String toLogin;
+    @Column(name = "to_account_id", nullable = false)
+    private Long toAccountId;
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
@@ -37,21 +47,6 @@ public class TransferRecord {
     private String errorMessage;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
-
-    protected TransferRecord() {
-    }
-
-    public TransferRecord(String fromLogin, String toLogin, BigDecimal amount, TransferStatus status, String errorMessage) {
-        this.fromLogin = fromLogin;
-        this.toLogin = toLogin;
-        this.amount = amount;
-        this.status = status;
-        this.errorMessage = errorMessage;
-        this.createdAt = Instant.now();
-    }
-
-    public Long getId() {
-        return id;
-    }
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

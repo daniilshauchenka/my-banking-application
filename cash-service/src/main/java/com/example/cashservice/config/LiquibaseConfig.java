@@ -27,12 +27,9 @@ public class LiquibaseConfig {
 
     @Bean
     public static BeanFactoryPostProcessor liquibaseEntityManagerFactoryDependsOnPostProcessor() {
-        return new BeanFactoryPostProcessor() {
-            @Override
-            public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
-                if (beanFactory.containsBeanDefinition("entityManagerFactory")) {
-                    beanFactory.getBeanDefinition("entityManagerFactory").setDependsOn("liquibase");
-                }
+        return beanFactory -> {
+            if (beanFactory.containsBeanDefinition("entityManagerFactory")) {
+                beanFactory.getBeanDefinition("entityManagerFactory").setDependsOn("liquibase");
             }
         };
     }

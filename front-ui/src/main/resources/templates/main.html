@@ -93,8 +93,8 @@
                                     <label for="to_account">Кому</label>
                                 </h6>
                                 <p>
-                                    <select class="form-select" id="to_account" name="login" required>
-                                        <option th:each="account : ${accounts}" th:value="${account.login}" th:text="${account.name}"></option>
+                                    <select class="form-select" id="to_account" name="accountId" required>
+                                        <option th:each="account : ${accounts}" th:value="${account.id}" th:text="${account.name}"></option>
                                     </select>
                                 </p>
                             </div>

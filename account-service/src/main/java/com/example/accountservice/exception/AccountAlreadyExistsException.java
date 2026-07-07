@@ -1,8 +1,7 @@
 package com.example.accountservice.exception;
 
-public class AccountAlreadyExistsException extends RuntimeException {
+import lombok.experimental.StandardException;
 
-    public AccountAlreadyExistsException(String message) {
-        super(message);
-    }
+@StandardException
+public class AccountAlreadyExistsException extends RuntimeException {
 }

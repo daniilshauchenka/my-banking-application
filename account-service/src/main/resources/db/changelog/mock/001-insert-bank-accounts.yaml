@@ -7,6 +7,9 @@ databaseChangeLog:
             tableName: bank_accounts
             columns:
               - column:
+                  name: id
+                  valueNumeric: 1
+              - column:
                   name: login
                   value: user1
               - column:
@@ -21,6 +24,9 @@ databaseChangeLog:
         - insert:
             tableName: bank_accounts
             columns:
+              - column:
+                  name: id
+                  valueNumeric: 2
               - column:
                   name: login
                   value: user2
@@ -37,6 +43,9 @@ databaseChangeLog:
             tableName: bank_accounts
             columns:
               - column:
+                  name: id
+                  valueNumeric: 3
+              - column:
                   name: login
                   value: user3
               - column:
@@ -48,3 +57,6 @@ databaseChangeLog:
               - column:
                   name: balance
                   valueNumeric: 300.00
+        - sql:
+            dbms: postgresql
+            sql: "select setval(pg_get_serial_sequence('bank_accounts', 'id'), (select max(id) from bank_accounts));"

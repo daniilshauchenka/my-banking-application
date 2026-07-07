@@ -22,9 +22,9 @@ public class BankClient {
         this.restClient = restClientBuilder.baseUrl(gatewayUrl).build();
     }
 
-    public AccountDto getAccount(String login) {
+    public AccountDto getAccount(Long accountId) {
         return restClient.get()
-                .uri("/accounts/{login}", login)
+                .uri("/accounts/{accountId}", accountId)
                 .retrieve()
                 .body(AccountDto.class);
     }
@@ -37,9 +37,9 @@ public class BankClient {
                 });
     }
 
-    public void updateAccount(String login, UpdateAccountRequest request) {
+    public void updateAccount(Long accountId, UpdateAccountRequest request) {
         restClient.put()
-                .uri("/accounts/{login}", login)
+                .uri("/accounts/{accountId}", accountId)
                 .body(request)
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, (httpRequest, response) -> {
@@ -48,12 +48,12 @@ public class BankClient {
                 .toBodilessEntity();
     }
 
-    public void deposit(String login, BigDecimal amount) {
-        patchCash(login, "deposit", amount);
+    public void deposit(Long accountId, BigDecimal amount) {
+        patchCash(accountId, "deposit", amount);
     }
 
-    public void withdraw(String login, BigDecimal amount) {
-        patchCash(login, "withdraw", amount);
+    public void withdraw(Long accountId, BigDecimal amount) {
+        patchCash(accountId, "withdraw", amount);
     }
 
     public void transfer(TransferRequest request) {
@@ -67,9 +67,9 @@ public class BankClient {
                 .toBodilessEntity();
     }
 
-    private void patchCash(String login, String action, BigDecimal amount) {
+    private void patchCash(Long accountId, String action, BigDecimal amount) {
         restClient.patch()
-                .uri("/cash/{login}/{action}", login, action)
+                .uri("/cash/{accountId}/{action}", accountId, action)
                 .body(new AmountRequest(amount))
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, (httpRequest, response) -> {

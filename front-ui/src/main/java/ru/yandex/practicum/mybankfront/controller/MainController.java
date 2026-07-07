@@ -5,6 +5,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import lombok.RequiredArgsConstructor;
 import ru.yandex.practicum.mybankfront.client.BankClient;
 import ru.yandex.practicum.mybankfront.controller.dto.AccountDto;
 import ru.yandex.practicum.mybankfront.controller.dto.CashAction;
@@ -18,13 +19,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Controller
+@RequiredArgsConstructor
 public class MainController {
 
     private final BankClient bankClient;
-
-    public MainController(BankClient bankClient) {
-        this.bankClient = bankClient;
-    }
 
     @GetMapping
     public String index() {
@@ -46,7 +44,8 @@ public class MainController {
     ) {
         try {
             String currentLogin = principal.getName();
-            bankClient.updateAccount(currentLogin, new UpdateAccountRequest(name, birthdate));
+            AccountDto currentAccount = findCurrentAccount(currentLogin);
+            bankClient.updateAccount(currentAccount.id(), new UpdateAccountRequest(name, birthdate));
             fillModel(model, currentLogin, null, "Account updated");
         } catch (RuntimeException exception) {
             fillModel(model, principal.getName(), List.of(exception.getMessage()), null);
@@ -64,12 +63,13 @@ public class MainController {
     ) {
         try {
             String currentLogin = principal.getName();
+            AccountDto currentAccount = findCurrentAccount(currentLogin);
             BigDecimal amount = BigDecimal.valueOf(value);
             if (action == CashAction.GET) {
-                bankClient.withdraw(currentLogin, amount);
+                bankClient.withdraw(currentAccount.id(), amount);
                 fillModel(model, currentLogin, null, "Cash withdrawn");
             } else {
-                bankClient.deposit(currentLogin, amount);
+                bankClient.deposit(currentAccount.id(), amount);
                 fillModel(model, currentLogin, null, "Cash deposited");
             }
         } catch (RuntimeException exception) {
@@ -83,12 +83,13 @@ public class MainController {
     public String transfer(
             Model model,
             @RequestParam("value") int value,
-            @RequestParam("login") String login,
+            @RequestParam("accountId") Long accountId,
             Principal principal
     ) {
         try {
             String currentLogin = principal.getName();
-            bankClient.transfer(new TransferRequest(currentLogin, login, BigDecimal.valueOf(value)));
+            AccountDto currentAccount = findCurrentAccount(currentLogin);
+            bankClient.transfer(new TransferRequest(currentAccount.id(), accountId, BigDecimal.valueOf(value)));
             fillModel(model, currentLogin, null, "Transfer completed");
         } catch (RuntimeException exception) {
             fillModel(model, principal.getName(), List.of(exception.getMessage()), null);
@@ -98,8 +99,12 @@ public class MainController {
     }
 
     private void fillModel(Model model, String currentLogin, List<String> errors, String info) {
-        AccountDto currentAccount = bankClient.getAccount(currentLogin);
-        List<AccountDto> accounts = bankClient.getAccounts().stream()
+        List<AccountDto> allAccounts = bankClient.getAccounts();
+        AccountDto currentAccount = allAccounts.stream()
+                .filter(account -> account.login().equals(currentLogin))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Current account was not found"));
+        List<AccountDto> accounts = allAccounts.stream()
                 .filter(account -> !account.login().equals(currentLogin))
                 .toList();
 
@@ -109,5 +114,12 @@ public class MainController {
         model.addAttribute("accounts", accounts);
         model.addAttribute("errors", errors);
         model.addAttribute("info", info);
+    }
+
+    private AccountDto findCurrentAccount(String currentLogin) {
+        return bankClient.getAccounts().stream()
+                .filter(account -> account.login().equals(currentLogin))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Current account was not found"));
     }
 }

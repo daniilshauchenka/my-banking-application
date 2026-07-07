@@ -7,11 +7,11 @@ databaseChangeLog:
             tableName: transfer_records
             columns:
               - column:
-                  name: from_login
-                  value: user1
+                  name: from_account_id
+                  valueNumeric: 1
               - column:
-                  name: to_login
-                  value: user2
+                  name: to_account_id
+                  valueNumeric: 2
               - column:
                   name: amount
                   valueNumeric: 25.00

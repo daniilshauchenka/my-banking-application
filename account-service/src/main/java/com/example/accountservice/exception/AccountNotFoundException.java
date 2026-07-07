@@ -1,8 +1,7 @@
 package com.example.accountservice.exception;
 
-public class AccountNotFoundException extends RuntimeException {
+import lombok.experimental.StandardException;
 
-    public AccountNotFoundException(String message) {
-        super(message);
-    }
+@StandardException
+public class AccountNotFoundException extends RuntimeException {
 }

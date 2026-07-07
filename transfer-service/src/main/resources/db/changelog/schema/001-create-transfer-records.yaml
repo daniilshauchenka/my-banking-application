@@ -14,13 +14,13 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: from_login
-                  type: varchar(64)
+                  name: from_account_id
+                  type: bigint
                   constraints:
                     nullable: false
               - column:
-                  name: to_login
-                  type: varchar(64)
+                  name: to_account_id
+                  type: bigint
                   constraints:
                     nullable: false
               - column:

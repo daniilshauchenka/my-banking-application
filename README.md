@@ -9,7 +9,7 @@
 - `account-service` - account API, port `6081`, own PostgreSQL database.
 - `transfer-service` - transfer API, port `6082`, own PostgreSQL database.
 - `cash-service` - cash deposit and withdraw API, port `6083`, own PostgreSQL database.
-- `notification-service` - notification API, port `6084`, logs business notifications.
+- `notification-service` - notification API, port `6084`, own PostgreSQL database, scheduled notification processing.
 - `front-ui` - Thymeleaf UI, port `6085`.
 - `keycloak` - OAuth 2.0 authorization server, port `6060`.
 
@@ -20,6 +20,7 @@ Each business service has its own PostgreSQL database:
 - `account-service` uses `account-postgres`, database `account_service`, port `6432`.
 - `transfer-service` uses `transfer-postgres`, database `transfer_service`, port `6433`.
 - `cash-service` uses `cash-postgres`, database `cash_service`, port `6434`.
+- `notification-service` uses `notification-postgres`, database `notification_service`, port `6435`.
 
 Schema migrations are managed by Liquibase:
 
@@ -31,6 +32,8 @@ Schema migrations are managed by Liquibase:
 - `transfer-service/src/main/resources/db/changelog/mock`
 - `cash-service/src/main/resources/db/changelog/db.changelog-master.yaml`
 - `cash-service/src/main/resources/db/changelog/schema`
+- `notification-service/src/main/resources/db/changelog/db.changelog-master.yaml`
+- `notification-service/src/main/resources/db/changelog/schema`
 
 ## Run
 
@@ -64,7 +67,10 @@ OAuth clients are imported from `keycloak/realm-export.json`:
 - `transfer-service` uses Client Credentials Flow with secret `transfer-secret`.
 - `cash-service` uses Client Credentials Flow with secret `cash-secret`.
 
-Cash operations go through `cash-service`: it updates balances in `account-service` and sends completed operation events to `notification-service`.
+Account `id` is the API key for account, cash, transfer, and notification operations. `login` is kept as a business field for display and matching the authenticated user.
+
+Cash operations go through `cash-service`: it updates balances in `account-service` by account id and stores completed operation events in `notification-service`.
+`notification-service` periodically reads unprocessed notifications, writes a sent notification message to logs, and marks records as processed.
 
 ## Checks
 

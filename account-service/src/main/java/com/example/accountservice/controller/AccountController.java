@@ -7,6 +7,7 @@ import com.example.accountservice.dto.UpdateAccountRequest;
 import com.example.accountservice.dto.WithdrawRequest;
 import com.example.accountservice.service.AccountService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,22 +24,19 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/accounts")
+@RequiredArgsConstructor
 public class AccountController {
 
     private final AccountService accountService;
-
-    public AccountController(AccountService accountService) {
-        this.accountService = accountService;
-    }
 
     @GetMapping
     public List<AccountDto> findAll() {
         return accountService.findAll();
     }
 
-    @GetMapping("/{login}")
-    public AccountDto findByLogin(@PathVariable String login) {
-        return accountService.findByLogin(login);
+    @GetMapping("/{id}")
+    public AccountDto findById(@PathVariable Long id) {
+        return accountService.findById(id);
     }
 
     @PostMapping
@@ -47,24 +45,24 @@ public class AccountController {
         return accountService.create(request);
     }
 
-    @PutMapping("/{login}")
-    public AccountDto update(@PathVariable String login, @Valid @RequestBody UpdateAccountRequest request) {
-        return accountService.update(login, request);
+    @PutMapping("/{id}")
+    public AccountDto update(@PathVariable Long id, @Valid @RequestBody UpdateAccountRequest request) {
+        return accountService.update(id, request);
     }
 
-    @PatchMapping("/{login}/deposit")
-    public AccountDto deposit(@PathVariable String login, @Valid @RequestBody DepositRequest request) {
-        return accountService.deposit(login, request.amount());
+    @PatchMapping("/{id}/deposit")
+    public AccountDto deposit(@PathVariable Long id, @Valid @RequestBody DepositRequest request) {
+        return accountService.deposit(id, request.amount());
     }
 
-    @PatchMapping("/{login}/withdraw")
-    public AccountDto withdraw(@PathVariable String login, @Valid @RequestBody WithdrawRequest request) {
-        return accountService.withdraw(login, request.amount());
+    @PatchMapping("/{id}/withdraw")
+    public AccountDto withdraw(@PathVariable Long id, @Valid @RequestBody WithdrawRequest request) {
+        return accountService.withdraw(id, request.amount());
     }
 
-    @DeleteMapping("/{login}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable String login) {
-        accountService.delete(login);
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public void delete(@PathVariable Long id) {
+        accountService.delete(id);
     }
 }

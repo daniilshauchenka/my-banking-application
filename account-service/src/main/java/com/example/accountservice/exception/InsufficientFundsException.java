@@ -1,8 +1,7 @@
 package com.example.accountservice.exception;
 
-public class InsufficientFundsException extends RuntimeException {
+import lombok.experimental.StandardException;
 
-    public InsufficientFundsException(String message) {
-        super(message);
-    }
+@StandardException
+public class InsufficientFundsException extends RuntimeException {
 }

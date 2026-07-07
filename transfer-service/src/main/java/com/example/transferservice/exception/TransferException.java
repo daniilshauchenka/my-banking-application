@@ -1,8 +1,7 @@
 package com.example.transferservice.exception;
 
-public class TransferException extends RuntimeException {
+import lombok.experimental.StandardException;
 
-    public TransferException(String message) {
-        super(message);
-    }
+@StandardException
+public class TransferException extends RuntimeException {
 }
