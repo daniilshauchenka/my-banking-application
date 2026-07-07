@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-bank-accounts
+      author: codex
+      changes:
+        - createTable:
+            tableName: bank_accounts
+            columns:
+              - column:
+                  name: login
+                  type: varchar(64)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: birthdate
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: balance
+                  type: numeric(19, 2)
+                  constraints:
+                    nullable: false

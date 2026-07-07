@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-insert-bank-accounts
+      author: codex
+      changes:
+        - insert:
+            tableName: bank_accounts
+            columns:
+              - column:
+                  name: login
+                  value: user1
+              - column:
+                  name: name
+                  value: user 1
+              - column:
+                  name: birthdate
+                  valueDate: 2001-01-01
+              - column:
+                  name: balance
+                  valueNumeric: 100.00
+        - insert:
+            tableName: bank_accounts
+            columns:
+              - column:
+                  name: login
+                  value: user2
+              - column:
+                  name: name
+                  value: user 2
+              - column:
+                  name: birthdate
+                  valueDate: 1998-05-12
+              - column:
+                  name: balance
+                  valueNumeric: 250.00
+        - insert:
+            tableName: bank_accounts
+            columns:
+              - column:
+                  name: login
+                  value: user3
+              - column:
+                  name: name
+                  value: user 3
+              - column:
+                  name: birthdate
+                  valueDate: 1995-09-20
+              - column:
+                  name: balance
+                  valueNumeric: 300.00

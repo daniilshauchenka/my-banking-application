@@ -1,0 +1,5 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/schema/001-create-bank-accounts.yaml
+  - include:
+      file: db/changelog/mock/001-insert-bank-accounts.yaml
