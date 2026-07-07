@@ -1,0 +1,43 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-cash-operations
+      author: codex
+      changes:
+        - createTable:
+            tableName: cash_operations
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: login
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: numeric(19, 2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_message
+                  type: varchar(255)
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false

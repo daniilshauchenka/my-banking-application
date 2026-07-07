@@ -39,6 +39,26 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  cash-postgres:
+    image: postgres:16-alpine
+    container_name: my-bank-cash-postgres
+    environment:
+      POSTGRES_DB: ${CASH_DB_NAME:-cash_service}
+      POSTGRES_USER: ${CASH_DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${CASH_DB_PASSWORD:-postgres}
+    command: ["postgres", "-p", "6434"]
+    ports:
+      - "${CASH_DB_PORT:-6434}:6434"
+    volumes:
+      - cash-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -p 6434 -U ${CASH_DB_USERNAME:-postgres} -d ${CASH_DB_NAME:-cash_service}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.0.7
     container_name: my-bank-keycloak
@@ -136,6 +156,59 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  notification-service:
+    build:
+      context: ./notification-service
+    container_name: my-bank-notification-service
+    environment:
+      CONFIG_SERVER_URL: http://config-server:6088
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
+      KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
+      KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
+    ports:
+      - "6084:6084"
+    depends_on:
+      keycloak:
+        condition: service_started
+      config-server:
+        condition: service_started
+      discovery-server:
+        condition: service_started
+    restart: unless-stopped
+
+  cash-service:
+    build:
+      context: ./cash-service
+    container_name: my-bank-cash-service
+    environment:
+      CONFIG_SERVER_URL: http://config-server:6088
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
+      ACCOUNT_SERVICE_URL: http://account-service:6081
+      NOTIFICATION_SERVICE_URL: http://notification-service:6084
+      CASH_DB_URL: jdbc:postgresql://cash-postgres:6434/${CASH_DB_NAME:-cash_service}
+      CASH_DB_USERNAME: ${CASH_DB_USERNAME:-postgres}
+      CASH_DB_PASSWORD: ${CASH_DB_PASSWORD:-postgres}
+      KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
+      KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
+      KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
+      CASH_SERVICE_CLIENT_SECRET: ${CASH_SERVICE_CLIENT_SECRET:-cash-secret}
+    ports:
+      - "6083:6083"
+    depends_on:
+      keycloak:
+        condition: service_started
+      cash-postgres:
+        condition: service_healthy
+      account-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+      config-server:
+        condition: service_started
+      discovery-server:
+        condition: service_started
+    restart: unless-stopped
+
   api-gateway:
     build:
       context: ./api-gateway
@@ -151,6 +224,8 @@ services:
       - keycloak
       - account-service
       - transfer-service
+      - cash-service
+      - notification-service
       - config-server
       - discovery-server
     restart: unless-stopped
@@ -179,3 +254,4 @@ services:
 volumes:
   account-postgres-data:
   transfer-postgres-data:
+  cash-postgres-data:

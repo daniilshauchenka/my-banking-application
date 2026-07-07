@@ -5,9 +5,6 @@ spring:
   application:
     name: cash-service
 
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:6088}
-
   datasource:
     url: ${CASH_DB_URL:jdbc:postgresql://localhost:6434/cash_service}
     username: ${CASH_DB_USERNAME:postgres}

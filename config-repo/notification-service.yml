@@ -1,17 +1,15 @@
+server:
+  port: 6084
+
 spring:
   application:
     name: notification-service
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:6088}
   security:
     oauth2:
       resourceserver:
         jwt:
           issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:6060/realms/my-bank}
           jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:6060/realms/my-bank/protocol/openid-connect/certs}
-
-server:
-  port: 6084
 
 eureka:
   client:

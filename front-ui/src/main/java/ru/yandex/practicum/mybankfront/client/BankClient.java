@@ -49,11 +49,11 @@ public class BankClient {
     }
 
     public void deposit(String login, BigDecimal amount) {
-        patchAmount(login, "deposit", amount);
+        patchCash(login, "deposit", amount);
     }
 
     public void withdraw(String login, BigDecimal amount) {
-        patchAmount(login, "withdraw", amount);
+        patchCash(login, "withdraw", amount);
     }
 
     public void transfer(TransferRequest request) {
@@ -67,9 +67,9 @@ public class BankClient {
                 .toBodilessEntity();
     }
 
-    private void patchAmount(String login, String action, BigDecimal amount) {
+    private void patchCash(String login, String action, BigDecimal amount) {
         restClient.patch()
-                .uri("/accounts/{login}/{action}", login, action)
+                .uri("/cash/{login}/{action}", login, action)
                 .body(new AmountRequest(amount))
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, (httpRequest, response) -> {

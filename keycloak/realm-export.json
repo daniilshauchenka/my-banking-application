@@ -37,6 +37,17 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true
+    },
+    {
+      "clientId": "cash-service",
+      "name": "cash-service",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "cash-secret",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
     }
   ],
   "users": [

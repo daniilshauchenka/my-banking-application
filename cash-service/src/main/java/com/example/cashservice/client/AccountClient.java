@@ -1,8 +1,8 @@
-package com.example.transferservice.client;
+package com.example.cashservice.client;
 
-import com.example.transferservice.dto.AccountDto;
-import com.example.transferservice.dto.AmountRequest;
-import com.example.transferservice.exception.TransferException;
+import com.example.cashservice.dto.AccountDto;
+import com.example.cashservice.dto.AmountRequest;
+import com.example.cashservice.exception.CashException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
@@ -33,7 +33,7 @@ public class AccountClient {
                 .body(new AmountRequest(amount))
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, (request, response) -> {
-                    throw new TransferException("Account service rejected %s operation".formatted(action));
+                    throw new CashException("Account service rejected %s operation".formatted(action));
                 })
                 .body(AccountDto.class);
     }

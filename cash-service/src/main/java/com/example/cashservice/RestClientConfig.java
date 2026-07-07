@@ -1,10 +1,10 @@
-package com.example.transferservice;
+package com.example.cashservice;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
@@ -45,9 +45,9 @@ public class RestClientConfig {
             @Value("${account-service.url}") String accountServiceUrl
     ) {
         OAuth2ClientHttpRequestInterceptor interceptor = new OAuth2ClientHttpRequestInterceptor(authorizedClientManager);
-        interceptor.setClientRegistrationIdResolver(request -> "transfer-service");
+        interceptor.setClientRegistrationIdResolver(request -> "cash-service");
         interceptor.setPrincipalResolver(request -> new UsernamePasswordAuthenticationToken(
-                "transfer-service",
+                "cash-service",
                 "N/A",
                 AuthorityUtils.createAuthorityList("ROLE_SERVICE")
         ));
@@ -59,11 +59,41 @@ public class RestClientConfig {
     }
 
     @Bean
+    @ConditionalOnProperty(prefix = "app.security", name = "enabled", havingValue = "true", matchIfMissing = true)
+    @Qualifier("notificationServiceRestClient")
+    public RestClient notificationServiceRestClient(
+            OAuth2AuthorizedClientManager authorizedClientManager,
+            @Value("${notification-service.url}") String notificationServiceUrl
+    ) {
+        OAuth2ClientHttpRequestInterceptor interceptor = new OAuth2ClientHttpRequestInterceptor(authorizedClientManager);
+        interceptor.setClientRegistrationIdResolver(request -> "cash-service");
+        interceptor.setPrincipalResolver(request -> new UsernamePasswordAuthenticationToken(
+                "cash-service",
+                "N/A",
+                AuthorityUtils.createAuthorityList("ROLE_SERVICE")
+        ));
+
+        return RestClient.builder()
+                .baseUrl(notificationServiceUrl)
+                .requestInterceptor(interceptor)
+                .build();
+    }
+
+    @Bean
     @ConditionalOnProperty(prefix = "app.security", name = "enabled", havingValue = "false")
     @Qualifier("accountServiceRestClient")
     public RestClient insecureAccountServiceRestClient(@Value("${account-service.url}") String accountServiceUrl) {
         return RestClient.builder()
                 .baseUrl(accountServiceUrl)
+                .build();
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "app.security", name = "enabled", havingValue = "false")
+    @Qualifier("notificationServiceRestClient")
+    public RestClient insecureNotificationServiceRestClient(@Value("${notification-service.url}") String notificationServiceUrl) {
+        return RestClient.builder()
+                .baseUrl(notificationServiceUrl)
                 .build();
     }
 }
