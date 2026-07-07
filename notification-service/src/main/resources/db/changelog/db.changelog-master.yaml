@@ -1,3 +1,5 @@
 databaseChangeLog:
   - include:
       file: db/changelog/schema/001-create-notifications.yaml
+  - include:
+      file: db/changelog/mock/001-insert-notifications.yaml

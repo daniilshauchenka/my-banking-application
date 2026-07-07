@@ -32,8 +32,10 @@ Schema migrations are managed by Liquibase:
 - `transfer-service/src/main/resources/db/changelog/mock`
 - `cash-service/src/main/resources/db/changelog/db.changelog-master.yaml`
 - `cash-service/src/main/resources/db/changelog/schema`
+- `cash-service/src/main/resources/db/changelog/mock`
 - `notification-service/src/main/resources/db/changelog/db.changelog-master.yaml`
 - `notification-service/src/main/resources/db/changelog/schema`
+- `notification-service/src/main/resources/db/changelog/mock`
 
 ## Run
 
@@ -61,16 +63,6 @@ Demo users:
 - `user2 / password`
 - `user3 / password`
 
-OAuth clients are imported from `keycloak/realm-export.json`:
-
-- `front-ui` uses Authorization Code Flow with PKCE.
-- `transfer-service` uses Client Credentials Flow with secret `transfer-secret`.
-- `cash-service` uses Client Credentials Flow with secret `cash-secret`.
-
-Account `id` is the API key for account, cash, transfer, and notification operations. `login` is kept as a business field for display and matching the authenticated user.
-
-Cash operations go through `cash-service`: it updates balances in `account-service` by account id and stores completed operation events in `notification-service`.
-`notification-service` periodically reads unprocessed notifications, writes a sent notification message to logs, and marks records as processed.
 
 ## Checks
 
@@ -84,5 +76,3 @@ Run module tests:
 ```powershell
 .\mvnw.cmd test
 ```
-
-from each service directory.

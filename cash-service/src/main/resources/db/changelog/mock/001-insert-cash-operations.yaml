@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-empty-cash-operations-mock
+      author: codex
+      changes:
+        - sql:
+            sql: select 1
