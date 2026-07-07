@@ -1,0 +1,18 @@
+spring:
+  config:
+    import: ""
+
+  cloud:
+    config:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+
+gateway:
+  url: http://localhost:6080
+
+app:
+  security:
+    enabled: false
