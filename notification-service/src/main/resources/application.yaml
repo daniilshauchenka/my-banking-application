@@ -3,6 +3,17 @@ spring:
     name: notification-service
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:6088}
+  datasource:
+    url: ${NOTIFICATION_DB_URL:jdbc:postgresql://localhost:6435/notification_service}
+    username: ${NOTIFICATION_DB_USERNAME:postgres}
+    password: ${NOTIFICATION_DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
   security:
     oauth2:
       resourceserver:
@@ -21,3 +32,5 @@ eureka:
 app:
   security:
     enabled: true
+  notifications:
+    scheduler-delay: 5000

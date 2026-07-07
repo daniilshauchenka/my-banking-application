@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 public record NotificationRequest(
-        @NotBlank String login,
+        @NotNull Long accountId,
         @NotBlank String eventType,
         @NotNull BigDecimal amount,
         @NotBlank String message

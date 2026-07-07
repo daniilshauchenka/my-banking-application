@@ -59,6 +59,26 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  notification-postgres:
+    image: postgres:16-alpine
+    container_name: my-bank-notification-postgres
+    environment:
+      POSTGRES_DB: ${NOTIFICATION_DB_NAME:-notification_service}
+      POSTGRES_USER: ${NOTIFICATION_DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-postgres}
+    command: ["postgres", "-p", "6435"]
+    ports:
+      - "${NOTIFICATION_DB_PORT:-6435}:6435"
+    volumes:
+      - notification-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -p 6435 -U ${NOTIFICATION_DB_USERNAME:-postgres} -d ${NOTIFICATION_DB_NAME:-notification_service}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.0.7
     container_name: my-bank-keycloak
@@ -163,6 +183,9 @@ services:
     environment:
       CONFIG_SERVER_URL: http://config-server:6088
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
+      NOTIFICATION_DB_URL: jdbc:postgresql://notification-postgres:6435/${NOTIFICATION_DB_NAME:-notification_service}
+      NOTIFICATION_DB_USERNAME: ${NOTIFICATION_DB_USERNAME:-postgres}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-postgres}
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
     ports:
@@ -170,6 +193,8 @@ services:
     depends_on:
       keycloak:
         condition: service_started
+      notification-postgres:
+        condition: service_healthy
       config-server:
         condition: service_started
       discovery-server:
@@ -255,3 +280,4 @@ volumes:
   account-postgres-data:
   transfer-postgres-data:
   cash-postgres-data:
+  notification-postgres-data:

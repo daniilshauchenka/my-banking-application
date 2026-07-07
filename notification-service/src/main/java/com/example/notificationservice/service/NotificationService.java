@@ -1,22 +1,25 @@
 package com.example.notificationservice.service;
 
 import com.example.notificationservice.dto.NotificationRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.example.notificationservice.model.Notification;
+import com.example.notificationservice.repository.NotificationRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class NotificationService {
 
-    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+    private final NotificationRepository notificationRepository;
 
+    @Transactional
     public void notify(NotificationRequest request) {
-        log.info(
-                "notification eventType={} login={} amount={} message={}",
-                request.eventType(),
-                request.login(),
-                request.amount(),
-                request.message()
-        );
+        notificationRepository.save(Notification.builder()
+                .accountId(request.accountId())
+                .eventType(request.eventType())
+                .amount(request.amount())
+                .message(request.message())
+                .build());
     }
 }
