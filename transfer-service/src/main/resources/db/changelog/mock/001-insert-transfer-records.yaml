@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-insert-transfer-records
+      author: codex
+      changes:
+        - insert:
+            tableName: transfer_records
+            columns:
+              - column:
+                  name: from_login
+                  value: user1
+              - column:
+                  name: to_login
+                  value: user2
+              - column:
+                  name: amount
+                  valueNumeric: 25.00
+              - column:
+                  name: status
+                  value: COMPLETED
+              - column:
+                  name: created_at
+                  valueDate: 2026-01-01T10:00:00

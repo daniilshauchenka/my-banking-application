@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: transfer-service
+
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:6088}
+
+  datasource:
+    url: ${TRANSFER_DB_URL:jdbc:postgresql://localhost:6433/transfer_service}
+    username: ${TRANSFER_DB_USERNAME:postgres}
+    password: ${TRANSFER_DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:6060/realms/my-bank}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:6060/realms/my-bank/protocol/openid-connect/certs}
+      client:
+        registration:
+          transfer-service:
+            provider: keycloak
+            client-id: transfer-service
+            client-secret: ${TRANSFER_SERVICE_CLIENT_SECRET:transfer-secret}
+            authorization-grant-type: client_credentials
+        provider:
+          keycloak:
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://localhost:6060/realms/my-bank/protocol/openid-connect/token}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+account-service:
+  url: ${ACCOUNT_SERVICE_URL:http://localhost:6081}
