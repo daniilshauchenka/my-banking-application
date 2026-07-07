@@ -1,0 +1,35 @@
+server:
+  port: 6081
+
+spring:
+  application:
+    name: account-service
+
+  datasource:
+    url: ${ACCOUNT_DB_URL:jdbc:postgresql://localhost:6432/account_service}
+    username: ${ACCOUNT_DB_USERNAME:postgres}
+    password: ${ACCOUNT_DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:6060/realms/my-bank}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:6060/realms/my-bank/protocol/openid-connect/certs}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:6071/eureka/
