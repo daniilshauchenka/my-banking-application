@@ -1,0 +1,181 @@
+services:
+  account-postgres:
+    image: postgres:16-alpine
+    container_name: my-bank-account-postgres
+    environment:
+      POSTGRES_DB: ${ACCOUNT_DB_NAME:-account_service}
+      POSTGRES_USER: ${ACCOUNT_DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${ACCOUNT_DB_PASSWORD:-postgres}
+    command: ["postgres", "-p", "6432"]
+    ports:
+      - "${ACCOUNT_DB_PORT:-6432}:6432"
+    volumes:
+      - account-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -p 6432 -U ${ACCOUNT_DB_USERNAME:-postgres} -d ${ACCOUNT_DB_NAME:-account_service}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  transfer-postgres:
+    image: postgres:16-alpine
+    container_name: my-bank-transfer-postgres
+    environment:
+      POSTGRES_DB: ${TRANSFER_DB_NAME:-transfer_service}
+      POSTGRES_USER: ${TRANSFER_DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${TRANSFER_DB_PASSWORD:-postgres}
+    command: ["postgres", "-p", "6433"]
+    ports:
+      - "${TRANSFER_DB_PORT:-6433}:6433"
+    volumes:
+      - transfer-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -p 6433 -U ${TRANSFER_DB_USERNAME:-postgres} -d ${TRANSFER_DB_NAME:-transfer_service}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7
+    container_name: my-bank-keycloak
+    command:
+      - start-dev
+      - --http-port=6060
+      - --hostname=localhost
+      - --hostname-strict=false
+      - --import-realm
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "6060:6060"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    restart: unless-stopped
+
+  discovery-server:
+    build:
+      context: ./discovery-server
+    container_name: my-bank-discovery-server
+    ports:
+      - "6071:6071"
+    restart: unless-stopped
+
+  config-server:
+    build:
+      context: ./config-server
+    container_name: my-bank-config-server
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
+      SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config-repo
+    ports:
+      - "6088:6088"
+    volumes:
+      - ./config-repo:/config-repo:ro
+    depends_on:
+      - discovery-server
+    restart: unless-stopped
+
+  account-service:
+    build:
+      context: ./account-service
+    container_name: my-bank-account-service
+    environment:
+      CONFIG_SERVER_URL: http://config-server:6088
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
+      ACCOUNT_DB_URL: jdbc:postgresql://account-postgres:6432/${ACCOUNT_DB_NAME:-account_service}
+      ACCOUNT_DB_USERNAME: ${ACCOUNT_DB_USERNAME:-postgres}
+      ACCOUNT_DB_PASSWORD: ${ACCOUNT_DB_PASSWORD:-postgres}
+      KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
+      KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
+    ports:
+      - "6081:6081"
+    depends_on:
+      keycloak:
+        condition: service_started
+      account-postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+      discovery-server:
+        condition: service_started
+    restart: unless-stopped
+
+  transfer-service:
+    build:
+      context: ./transfer-service
+    container_name: my-bank-transfer-service
+    environment:
+      CONFIG_SERVER_URL: http://config-server:6088
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
+      ACCOUNT_SERVICE_URL: http://account-service:6081
+      TRANSFER_DB_URL: jdbc:postgresql://transfer-postgres:6433/${TRANSFER_DB_NAME:-transfer_service}
+      TRANSFER_DB_USERNAME: ${TRANSFER_DB_USERNAME:-postgres}
+      TRANSFER_DB_PASSWORD: ${TRANSFER_DB_PASSWORD:-postgres}
+      KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
+      KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
+      KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
+      TRANSFER_SERVICE_CLIENT_SECRET: ${TRANSFER_SERVICE_CLIENT_SECRET:-transfer-secret}
+    ports:
+      - "6082:6082"
+    depends_on:
+      keycloak:
+        condition: service_started
+      transfer-postgres:
+        condition: service_healthy
+      account-service:
+        condition: service_started
+      config-server:
+        condition: service_started
+      discovery-server:
+        condition: service_started
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: my-bank-api-gateway
+    environment:
+      CONFIG_SERVER_URL: http://config-server:6088
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
+      KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
+      KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
+    ports:
+      - "6080:6080"
+    depends_on:
+      - keycloak
+      - account-service
+      - transfer-service
+      - config-server
+      - discovery-server
+    restart: unless-stopped
+
+  front-ui:
+    build:
+      context: ./front-ui
+    container_name: my-bank-front-ui
+    environment:
+      CONFIG_SERVER_URL: http://config-server:6088
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
+      GATEWAY_URL: http://api-gateway:6080
+      KEYCLOAK_AUTHORIZATION_URI: http://localhost:6060/realms/my-bank/protocol/openid-connect/auth
+      KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
+      KEYCLOAK_USER_INFO_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/userinfo
+      KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
+    ports:
+      - "6085:6085"
+    depends_on:
+      - keycloak
+      - api-gateway
+      - config-server
+      - discovery-server
+    restart: unless-stopped
+
+volumes:
+  account-postgres-data:
+  transfer-postgres-data:
