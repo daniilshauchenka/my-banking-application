@@ -131,8 +131,11 @@ services:
       ACCOUNT_DB_URL: jdbc:postgresql://account-postgres:6432/${ACCOUNT_DB_NAME:-account_service}
       ACCOUNT_DB_USERNAME: ${ACCOUNT_DB_USERNAME:-postgres}
       ACCOUNT_DB_PASSWORD: ${ACCOUNT_DB_PASSWORD:-postgres}
+      NOTIFICATION_SERVICE_URL: http://notification-service:6084
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
+      KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
+      ACCOUNT_SERVICE_CLIENT_SECRET: ${ACCOUNT_SERVICE_CLIENT_SECRET:-account-secret}
     ports:
       - "6081:6081"
     depends_on:
@@ -140,6 +143,8 @@ services:
         condition: service_started
       account-postgres:
         condition: service_healthy
+      notification-service:
+        condition: service_started
       config-server:
         condition: service_started
       discovery-server:

@@ -1,6 +1,7 @@
 package com.example.accountservice;
 
 import com.example.accountservice.dto.CreateAccountRequest;
+import com.example.accountservice.client.NotificationClient;
 import com.example.accountservice.exception.InsufficientFundsException;
 import com.example.accountservice.model.Account;
 import com.example.accountservice.repository.AccountRepository;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,6 +26,9 @@ class AccountServiceTests {
 
     @Autowired
     private AccountRepository accountRepository;
+
+    @MockitoBean
+    private NotificationClient notificationClient;
 
     private Long accountId;
 

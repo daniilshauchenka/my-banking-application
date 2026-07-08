@@ -1,5 +1,6 @@
 package com.example.accountservice.service;
 
+ import com.example.accountservice.client.NotificationClient;
 import com.example.accountservice.dto.AccountDto;
 import com.example.accountservice.dto.CreateAccountRequest;
 import com.example.accountservice.dto.UpdateAccountRequest;
@@ -9,6 +10,7 @@ import com.example.accountservice.exception.InsufficientFundsException;
 import com.example.accountservice.model.Account;
 import com.example.accountservice.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,9 +19,11 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AccountService {
 
     private final AccountRepository accountRepository;
+    private final NotificationClient notificationClient;
 
     @Transactional(readOnly = true)
     public List<AccountDto> findAll() {
@@ -45,7 +49,10 @@ public class AccountService {
                 .birthdate(request.birthdate())
                 .balance(request.balance())
                 .build();
-        return toDto(accountRepository.save(account));
+        Account savedAccount = accountRepository.save(account);
+        notifyAccount(savedAccount.getId(), "ACCOUNT_CREATED", savedAccount.getBalance(),
+                "Account %s created".formatted(savedAccount.getId()));
+        return toDto(savedAccount);
     }
 
     @Transactional
@@ -53,6 +60,8 @@ public class AccountService {
         Account account = getAccount(id);
         account.setName(request.name());
         account.setBirthdate(request.birthdate());
+        notifyAccount(account.getId(), "ACCOUNT_UPDATED", account.getBalance(),
+                "Account %s updated".formatted(account.getId()));
         return toDto(account);
     }
 
@@ -60,6 +69,8 @@ public class AccountService {
     public AccountDto deposit(Long id, BigDecimal amount) {
         Account account = getAccountForUpdate(id);
         account.setBalance(account.getBalance().add(amount));
+        notifyAccount(account.getId(), "ACCOUNT_DEPOSIT", amount,
+                "Account %s balance increased by %s".formatted(account.getId(), amount));
         return toDto(account);
     }
 
@@ -70,6 +81,8 @@ public class AccountService {
             throw new InsufficientFundsException("Not enough funds on account '%s'".formatted(id));
         }
         account.setBalance(account.getBalance().subtract(amount));
+        notifyAccount(account.getId(), "ACCOUNT_WITHDRAW", amount,
+                "Account %s balance decreased by %s".formatted(account.getId(), amount));
         return toDto(account);
     }
 
@@ -77,6 +90,8 @@ public class AccountService {
     public void delete(Long id) {
         Account account = getAccount(id);
         accountRepository.delete(account);
+        notifyAccount(account.getId(), "ACCOUNT_DELETED", account.getBalance(),
+                "Account %s deleted".formatted(account.getId()));
     }
 
     private Account getAccount(Long id) {
@@ -97,5 +112,13 @@ public class AccountService {
                 account.getBirthdate(),
                 account.getBalance()
         );
+    }
+
+    private void notifyAccount(Long accountId, String eventType, BigDecimal amount, String message) {
+        try {
+            notificationClient.notify(accountId, eventType, amount, message);
+        } catch (RuntimeException exception) {
+            log.warn("Account notification failed for accountId={} eventType={}", accountId, eventType, exception);
+        }
     }
 }

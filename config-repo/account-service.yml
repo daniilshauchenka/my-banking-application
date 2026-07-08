@@ -20,6 +20,16 @@ spring:
         jwt:
           issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:6060/realms/my-bank}
           jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:6060/realms/my-bank/protocol/openid-connect/certs}
+      client:
+        registration:
+          account-service:
+            provider: keycloak
+            client-id: account-service
+            client-secret: ${ACCOUNT_SERVICE_CLIENT_SECRET:account-secret}
+            authorization-grant-type: client_credentials
+        provider:
+          keycloak:
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://localhost:6060/realms/my-bank/protocol/openid-connect/token}
 
   jpa:
     hibernate:
@@ -33,3 +43,6 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:6071/eureka/
+
+notification-service:
+  url: ${NOTIFICATION_SERVICE_URL:http://localhost:6084}

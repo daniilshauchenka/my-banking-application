@@ -39,6 +39,17 @@
       "serviceAccountsEnabled": true
     },
     {
+      "clientId": "account-service",
+      "name": "account-service",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "account-secret",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
+    },
+    {
       "clientId": "cash-service",
       "name": "cash-service",
       "enabled": true,

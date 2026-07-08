@@ -30,3 +30,6 @@ eureka:
 app:
   security:
     enabled: false
+
+notification-service:
+  url: http://localhost:1
