@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-bank-smoke-test
+  namespace: {{ .Values.global.namespace.name }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: smoke-test
+      image: curlimages/curl:8.11.1
+      command:
+        - /bin/sh
+        - -ec
+        - >
+          curl --silent --show-error --max-time 5 http://api-gateway:6080 >/dev/null;
+          curl --silent --show-error --max-time 5 http://front-ui:6085 >/dev/null;
+          curl --silent --show-error --max-time 5 http://keycloak:6060/realms/my-bank >/dev/null;
+          curl --silent --show-error --max-time 5 http://account-service:6081 >/dev/null;
+          curl --silent --show-error --max-time 5 http://transfer-service:6082 >/dev/null;
+          curl --silent --show-error --max-time 5 http://cash-service:6083 >/dev/null;
+          curl --silent --show-error --max-time 5 http://notification-service:6084 >/dev/null

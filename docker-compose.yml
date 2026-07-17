@@ -98,36 +98,11 @@ services:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     restart: unless-stopped
 
-  discovery-server:
-    build:
-      context: ./discovery-server
-    container_name: my-bank-discovery-server
-    ports:
-      - "6071:6071"
-    restart: unless-stopped
-
-  config-server:
-    build:
-      context: ./config-server
-    container_name: my-bank-config-server
-    environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
-      SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config-repo
-    ports:
-      - "6088:6088"
-    volumes:
-      - ./config-repo:/config-repo:ro
-    depends_on:
-      - discovery-server
-    restart: unless-stopped
-
   account-service:
     build:
       context: ./account-service
     container_name: my-bank-account-service
     environment:
-      CONFIG_SERVER_URL: http://config-server:6088
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
       ACCOUNT_DB_URL: jdbc:postgresql://account-postgres:6432/${ACCOUNT_DB_NAME:-account_service}
       ACCOUNT_DB_USERNAME: ${ACCOUNT_DB_USERNAME:-postgres}
       ACCOUNT_DB_PASSWORD: ${ACCOUNT_DB_PASSWORD:-postgres}
@@ -145,10 +120,6 @@ services:
         condition: service_healthy
       notification-service:
         condition: service_started
-      config-server:
-        condition: service_started
-      discovery-server:
-        condition: service_started
     restart: unless-stopped
 
   transfer-service:
@@ -156,8 +127,6 @@ services:
       context: ./transfer-service
     container_name: my-bank-transfer-service
     environment:
-      CONFIG_SERVER_URL: http://config-server:6088
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
       ACCOUNT_SERVICE_URL: http://account-service:6081
       TRANSFER_DB_URL: jdbc:postgresql://transfer-postgres:6433/${TRANSFER_DB_NAME:-transfer_service}
       TRANSFER_DB_USERNAME: ${TRANSFER_DB_USERNAME:-postgres}
@@ -175,10 +144,6 @@ services:
         condition: service_healthy
       account-service:
         condition: service_started
-      config-server:
-        condition: service_started
-      discovery-server:
-        condition: service_started
     restart: unless-stopped
 
   notification-service:
@@ -186,8 +151,6 @@ services:
       context: ./notification-service
     container_name: my-bank-notification-service
     environment:
-      CONFIG_SERVER_URL: http://config-server:6088
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
       NOTIFICATION_DB_URL: jdbc:postgresql://notification-postgres:6435/${NOTIFICATION_DB_NAME:-notification_service}
       NOTIFICATION_DB_USERNAME: ${NOTIFICATION_DB_USERNAME:-postgres}
       NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-postgres}
@@ -200,10 +163,6 @@ services:
         condition: service_started
       notification-postgres:
         condition: service_healthy
-      config-server:
-        condition: service_started
-      discovery-server:
-        condition: service_started
     restart: unless-stopped
 
   cash-service:
@@ -211,8 +170,6 @@ services:
       context: ./cash-service
     container_name: my-bank-cash-service
     environment:
-      CONFIG_SERVER_URL: http://config-server:6088
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
       ACCOUNT_SERVICE_URL: http://account-service:6081
       NOTIFICATION_SERVICE_URL: http://notification-service:6084
       CASH_DB_URL: jdbc:postgresql://cash-postgres:6434/${CASH_DB_NAME:-cash_service}
@@ -233,10 +190,6 @@ services:
         condition: service_started
       notification-service:
         condition: service_started
-      config-server:
-        condition: service_started
-      discovery-server:
-        condition: service_started
     restart: unless-stopped
 
   api-gateway:
@@ -244,8 +197,10 @@ services:
       context: ./api-gateway
     container_name: my-bank-api-gateway
     environment:
-      CONFIG_SERVER_URL: http://config-server:6088
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
+      ACCOUNT_SERVICE_URL: http://account-service:6081
+      TRANSFER_SERVICE_URL: http://transfer-service:6082
+      CASH_SERVICE_URL: http://cash-service:6083
+      NOTIFICATION_SERVICE_URL: http://notification-service:6084
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
     ports:
@@ -256,8 +211,6 @@ services:
       - transfer-service
       - cash-service
       - notification-service
-      - config-server
-      - discovery-server
     restart: unless-stopped
 
   front-ui:
@@ -265,8 +218,6 @@ services:
       context: ./front-ui
     container_name: my-bank-front-ui
     environment:
-      CONFIG_SERVER_URL: http://config-server:6088
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:6071/eureka/
       GATEWAY_URL: http://api-gateway:6080
       KEYCLOAK_AUTHORIZATION_URI: http://localhost:6060/realms/my-bank/protocol/openid-connect/auth
       KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
@@ -277,8 +228,6 @@ services:
     depends_on:
       - keycloak
       - api-gateway
-      - config-server
-      - discovery-server
     restart: unless-stopped
 
 volumes:

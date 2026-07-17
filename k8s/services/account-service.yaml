@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: account-service
+  namespace: my-bank
+spec:
+  selector:
+    app: account-service
+  ports:
+    - name: http
+      port: 6081
+      targetPort: 6081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-service
+  namespace: my-bank
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: account-service
+  template:
+    metadata:
+      labels:
+        app: account-service
+    spec:
+      containers:
+        - name: account-service
+          image: my-bank/account-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6081
+          envFrom:
+            - configMapRef:
+                name: my-bank-app-config
+            - secretRef:
+                name: my-bank-app-secrets
+          env:
+            - name: SERVER_PORT
+              value: "6081"
+          readinessProbe:
+            tcpSocket:
+              port: 6081
+            initialDelaySeconds: 40
+            periodSeconds: 10

@@ -1,0 +1,4 @@
+port: 6085
+image: front-ui
+envSecret: false
+initialDelaySeconds: 40

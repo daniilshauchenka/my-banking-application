@@ -1,0 +1,6 @@
+port: 6434
+databaseConfigKey: CASH_DB_NAME
+usernameSecretKey: CASH_DB_USERNAME
+passwordSecretKey: CASH_DB_PASSWORD
+databaseName: cash_service
+storage: 1Gi

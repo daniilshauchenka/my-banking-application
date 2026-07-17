@@ -1,0 +1,4 @@
+port: 6082
+image: transfer-service
+envSecret: true
+initialDelaySeconds: 40

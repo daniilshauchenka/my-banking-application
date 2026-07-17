@@ -2,9 +2,6 @@
 
 ## Structure
 
-- `config-repo` - external configuration files.
-- `config-server` - Spring Cloud Config Server, port `6088`.
-- `discovery-server` - Eureka Server, port `6071`.
 - `api-gateway` - Spring Cloud Gateway, port `6080`.
 - `account-service` - account API, port `6081`, own PostgreSQL database.
 - `transfer-service` - transfer API, port `6082`, own PostgreSQL database.

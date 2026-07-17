@@ -1,0 +1,6 @@
+port: 6432
+databaseConfigKey: ACCOUNT_DB_NAME
+usernameSecretKey: ACCOUNT_DB_USERNAME
+passwordSecretKey: ACCOUNT_DB_PASSWORD
+databaseName: account_service
+storage: 1Gi

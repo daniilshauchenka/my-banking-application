@@ -1,0 +1,46 @@
+apiVersion: v2
+name: my-bank
+description: My Bank umbrella chart
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: common-config
+    version: 0.1.0
+    repository: file://charts/common-config
+  - name: account-postgres
+    version: 0.1.0
+    repository: file://charts/account-postgres
+  - name: transfer-postgres
+    version: 0.1.0
+    repository: file://charts/transfer-postgres
+  - name: cash-postgres
+    version: 0.1.0
+    repository: file://charts/cash-postgres
+  - name: notification-postgres
+    version: 0.1.0
+    repository: file://charts/notification-postgres
+  - name: keycloak
+    version: 0.1.0
+    repository: file://charts/keycloak
+  - name: account-service
+    version: 0.1.0
+    repository: file://charts/account-service
+  - name: transfer-service
+    version: 0.1.0
+    repository: file://charts/transfer-service
+  - name: cash-service
+    version: 0.1.0
+    repository: file://charts/cash-service
+  - name: notification-service
+    version: 0.1.0
+    repository: file://charts/notification-service
+  - name: api-gateway
+    version: 0.1.0
+    repository: file://charts/api-gateway
+  - name: front-ui
+    version: 0.1.0
+    repository: file://charts/front-ui
+  - name: ingress
+    version: 0.1.0
+    repository: file://charts/ingress

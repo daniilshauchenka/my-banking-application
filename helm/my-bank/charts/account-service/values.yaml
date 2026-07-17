@@ -1,0 +1,4 @@
+port: 6081
+image: account-service
+envSecret: true
+initialDelaySeconds: 40

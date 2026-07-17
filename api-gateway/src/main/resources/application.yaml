@@ -5,9 +5,6 @@ spring:
   application:
     name: api-gateway
 
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:6088}
-
   security:
     oauth2:
       resourceserver:
@@ -21,27 +18,21 @@ spring:
         webflux:
           discovery:
             locator:
-              enabled: true
-              lower-case-service-id: true
+              enabled: false
           routes:
             - id: account-service
-              uri: lb://account-service
+              uri: ${ACCOUNT_SERVICE_URL:http://localhost:6081}
               predicates:
                 - Path=/accounts/**
             - id: transfer-service
-              uri: lb://transfer-service
+              uri: ${TRANSFER_SERVICE_URL:http://localhost:6082}
               predicates:
                 - Path=/transfers/**
             - id: cash-service
-              uri: lb://cash-service
+              uri: ${CASH_SERVICE_URL:http://localhost:6083}
               predicates:
                 - Path=/cash/**
             - id: notification-service
-              uri: lb://notification-service
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:6084}
               predicates:
                 - Path=/notifications/**
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:6071/eureka/

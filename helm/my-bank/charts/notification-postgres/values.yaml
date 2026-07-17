@@ -1,0 +1,6 @@
+port: 6435
+databaseConfigKey: NOTIFICATION_DB_NAME
+usernameSecretKey: NOTIFICATION_DB_USERNAME
+passwordSecretKey: NOTIFICATION_DB_PASSWORD
+databaseName: notification_service
+storage: 1Gi

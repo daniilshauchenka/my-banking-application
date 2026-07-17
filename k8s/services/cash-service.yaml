@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cash-service
+  namespace: my-bank
+spec:
+  selector:
+    app: cash-service
+  ports:
+    - name: http
+      port: 6083
+      targetPort: 6083
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cash-service
+  namespace: my-bank
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cash-service
+  template:
+    metadata:
+      labels:
+        app: cash-service
+    spec:
+      containers:
+        - name: cash-service
+          image: my-bank/cash-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6083
+          envFrom:
+            - configMapRef:
+                name: my-bank-app-config
+            - secretRef:
+                name: my-bank-app-secrets
+          env:
+            - name: SERVER_PORT
+              value: "6083"
+          readinessProbe:
+            tcpSocket:
+              port: 6083
+            initialDelaySeconds: 40
+            periodSeconds: 10

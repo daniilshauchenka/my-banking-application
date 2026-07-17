@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-bank-app-config
+  namespace: my-bank
+data:
+  ACCOUNT_DB_NAME: account_service
+  TRANSFER_DB_NAME: transfer_service
+  CASH_DB_NAME: cash_service
+  NOTIFICATION_DB_NAME: notification_service
+
+  ACCOUNT_DB_URL: jdbc:postgresql://account-postgres:6432/account_service
+  TRANSFER_DB_URL: jdbc:postgresql://transfer-postgres:6433/transfer_service
+  CASH_DB_URL: jdbc:postgresql://cash-postgres:6434/cash_service
+  NOTIFICATION_DB_URL: jdbc:postgresql://notification-postgres:6435/notification_service
+
+  ACCOUNT_SERVICE_URL: http://account-service:6081
+  TRANSFER_SERVICE_URL: http://transfer-service:6082
+  CASH_SERVICE_URL: http://cash-service:6083
+  NOTIFICATION_SERVICE_URL: http://notification-service:6084
+  GATEWAY_URL: http://api-gateway:6080
+
+  KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
+  KEYCLOAK_AUTHORIZATION_URI: http://localhost:6060/realms/my-bank/protocol/openid-connect/auth
+  KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
+  KEYCLOAK_USER_INFO_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/userinfo
+  KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: common-config
+description: Shared ConfigMap and optional Secret for My Bank
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
