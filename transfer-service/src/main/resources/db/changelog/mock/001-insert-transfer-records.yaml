@@ -21,3 +21,6 @@ databaseChangeLog:
               - column:
                   name: created_at
                   valueDate: 2026-01-01T10:00:00
+              - column:
+                  name: updated_at
+                  valueDate: 2026-01-01T10:00:00

@@ -19,17 +19,25 @@ public class AccountClient {
     private final RestClient restClient;
 
     public AccountDto deposit(Long accountId, BigDecimal amount) {
-        return patchAmount(accountId, "deposit", amount);
+        return deposit(accountId, amount, null);
+    }
+
+    public AccountDto deposit(Long accountId, BigDecimal amount, String operationId) {
+        return patchAmount(accountId, "deposit", amount, operationId);
     }
 
     public AccountDto withdraw(Long accountId, BigDecimal amount) {
-        return patchAmount(accountId, "withdraw", amount);
+        return withdraw(accountId, amount, null);
     }
 
-    private AccountDto patchAmount(Long accountId, String action, BigDecimal amount) {
+    public AccountDto withdraw(Long accountId, BigDecimal amount, String operationId) {
+        return patchAmount(accountId, "withdraw", amount, operationId);
+    }
+
+    private AccountDto patchAmount(Long accountId, String action, BigDecimal amount, String operationId) {
         return restClient.patch()
                 .uri("/accounts/{accountId}/{action}", accountId, action)
-                .body(new AmountRequest(amount))
+                .body(new AmountRequest(amount, operationId))
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, (request, response) -> {
                     throw new TransferException("Account service rejected %s operation".formatted(action));

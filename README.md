@@ -73,3 +73,37 @@ Run module tests:
 ```powershell
 .\mvnw.cmd test
 ```
+
+## Kubernetes
+
+Raw Kubernetes manifests are stored in `k8s/`. The Kubernetes deployment uses Kubernetes `Service` DNS for service discovery and `ConfigMap`/`Secret` for runtime configuration.
+
+
+Apply raw manifests:
+
+```powershell
+kubectl apply -k k8s
+kubectl -n my-bank get pods
+```
+
+## Helm
+
+The Helm chart is stored in `helm/my-bank`. It is an umbrella chart with subcharts for shared configuration, PostgreSQL databases, application services, Keycloak, Front UI and Ingress.
+
+Validate and install:
+
+```powershell
+helm lint .\helm\my-bank
+helm template my-bank .\helm\my-bank
+helm upgrade --install my-bank .\helm\my-bank --namespace my-bank --create-namespace
+```
+
+Run Helm chart tests after deployment:
+
+```powershell
+& $helm test my-bank --namespace my-bank
+```
+
+```text
+http://my-bank.local
+```

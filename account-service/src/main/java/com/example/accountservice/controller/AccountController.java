@@ -52,12 +52,12 @@ public class AccountController {
 
     @PatchMapping("/{id}/deposit")
     public AccountDto deposit(@PathVariable Long id, @Valid @RequestBody DepositRequest request) {
-        return accountService.deposit(id, request.amount());
+        return accountService.deposit(id, request.amount(), request.operationId());
     }
 
     @PatchMapping("/{id}/withdraw")
     public AccountDto withdraw(@PathVariable Long id, @Valid @RequestBody WithdrawRequest request) {
-        return accountService.withdraw(id, request.amount());
+        return accountService.withdraw(id, request.amount(), request.operationId());
     }
 
     @DeleteMapping("/{id}")

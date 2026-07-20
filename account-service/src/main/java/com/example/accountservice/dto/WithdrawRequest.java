@@ -8,6 +8,8 @@ import java.math.BigDecimal;
 public record WithdrawRequest(
         @NotNull
         @DecimalMin(value = "0.01")
-        BigDecimal amount
+        BigDecimal amount,
+
+        String operationId
 ) {
 }
