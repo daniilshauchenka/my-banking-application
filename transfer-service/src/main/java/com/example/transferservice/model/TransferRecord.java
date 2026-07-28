@@ -46,7 +46,23 @@ public class TransferRecord {
     @Column(name = "error_message")
     private String errorMessage;
 
+    @Column(name = "from_balance", precision = 19, scale = 2)
+    private BigDecimal fromBalance;
+
+    @Column(name = "to_balance", precision = 19, scale = 2)
+    private BigDecimal toBalance;
+
     @Column(name = "created_at", nullable = false)
     @Builder.Default
     private Instant createdAt = Instant.now();
+
+    @Column(name = "updated_at", nullable = false)
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
+
+    public void markStatus(TransferStatus status, String errorMessage) {
+        this.status = status;
+        this.errorMessage = errorMessage;
+        this.updatedAt = Instant.now();
+    }
 }

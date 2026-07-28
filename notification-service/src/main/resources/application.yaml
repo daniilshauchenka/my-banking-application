@@ -1,8 +1,6 @@
 spring:
   application:
     name: notification-service
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:6088}
   datasource:
     url: ${NOTIFICATION_DB_URL:jdbc:postgresql://localhost:6435/notification_service}
     username: ${NOTIFICATION_DB_USERNAME:postgres}
@@ -23,11 +21,6 @@ spring:
 
 server:
   port: 6084
-
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:6071/eureka/}
 
 app:
   security:

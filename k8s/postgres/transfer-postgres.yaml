@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: transfer-postgres
+  namespace: my-bank
+spec:
+  selector:
+    app: transfer-postgres
+  ports:
+    - name: postgres
+      port: 6433
+      targetPort: 6433
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: transfer-postgres
+  namespace: my-bank
+spec:
+  serviceName: transfer-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transfer-postgres
+  template:
+    metadata:
+      labels:
+        app: transfer-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          args: ["postgres", "-p", "6433"]
+          ports:
+            - containerPort: 6433
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: my-bank-app-config
+                  key: TRANSFER_DB_NAME
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: my-bank-app-secrets
+                  key: TRANSFER_DB_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: my-bank-app-secrets
+                  key: TRANSFER_DB_PASSWORD
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-p", "6433", "-U", "postgres", "-d", "transfer_service"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

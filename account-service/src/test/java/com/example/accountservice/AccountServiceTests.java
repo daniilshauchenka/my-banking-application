@@ -53,6 +53,24 @@ class AccountServiceTests {
     }
 
     @Test
+    void depositWithSameOperationIdIsAppliedOnce() {
+        accountService.deposit(accountId, new BigDecimal("15.00"), "operation-1");
+        accountService.deposit(accountId, new BigDecimal("15.00"), "operation-1");
+
+        Account account = accountRepository.findById(accountId).orElseThrow();
+        assertThat(account.getBalance()).isEqualByComparingTo("115.00");
+    }
+
+    @Test
+    void withdrawWithSameOperationIdIsAppliedOnce() {
+        accountService.withdraw(accountId, new BigDecimal("15.00"), "operation-2");
+        accountService.withdraw(accountId, new BigDecimal("15.00"), "operation-2");
+
+        Account account = accountRepository.findById(accountId).orElseThrow();
+        assertThat(account.getBalance()).isEqualByComparingTo("85.00");
+    }
+
+    @Test
     void withdrawRejectsInsufficientFunds() {
         assertThatThrownBy(() -> accountService.withdraw(accountId, new BigDecimal("101.00")))
                 .isInstanceOf(InsufficientFundsException.class);

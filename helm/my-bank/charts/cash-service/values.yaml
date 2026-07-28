@@ -1,0 +1,4 @@
+port: 6083
+image: cash-service
+envSecret: true
+initialDelaySeconds: 40

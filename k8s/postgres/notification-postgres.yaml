@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-postgres
+  namespace: my-bank
+spec:
+  selector:
+    app: notification-postgres
+  ports:
+    - name: postgres
+      port: 6435
+      targetPort: 6435
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: notification-postgres
+  namespace: my-bank
+spec:
+  serviceName: notification-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-postgres
+  template:
+    metadata:
+      labels:
+        app: notification-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          args: ["postgres", "-p", "6435"]
+          ports:
+            - containerPort: 6435
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: my-bank-app-config
+                  key: NOTIFICATION_DB_NAME
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: my-bank-app-secrets
+                  key: NOTIFICATION_DB_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: my-bank-app-secrets
+                  key: NOTIFICATION_DB_PASSWORD
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-p", "6435", "-U", "postgres", "-d", "notification_service"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

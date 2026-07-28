@@ -2,9 +2,6 @@ spring:
   application:
     name: transfer-service
 
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:6088}
-
   datasource:
     url: ${TRANSFER_DB_URL:jdbc:postgresql://localhost:6433/transfer_service}
     username: ${TRANSFER_DB_USERNAME:postgres}
@@ -41,3 +38,6 @@ spring:
 
 account-service:
   url: ${ACCOUNT_SERVICE_URL:http://localhost:6081}
+
+server:
+  port: 6082

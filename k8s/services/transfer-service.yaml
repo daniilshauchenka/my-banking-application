@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: transfer-service
+  namespace: my-bank
+spec:
+  selector:
+    app: transfer-service
+  ports:
+    - name: http
+      port: 6082
+      targetPort: 6082
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transfer-service
+  namespace: my-bank
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transfer-service
+  template:
+    metadata:
+      labels:
+        app: transfer-service
+    spec:
+      containers:
+        - name: transfer-service
+          image: my-bank/transfer-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6082
+          envFrom:
+            - configMapRef:
+                name: my-bank-app-config
+            - secretRef:
+                name: my-bank-app-secrets
+          env:
+            - name: SERVER_PORT
+              value: "6082"
+          readinessProbe:
+            tcpSocket:
+              port: 6082
+            initialDelaySeconds: 40
+            periodSeconds: 10

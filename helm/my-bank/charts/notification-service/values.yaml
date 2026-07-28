@@ -1,0 +1,4 @@
+port: 6084
+image: notification-service
+envSecret: true
+initialDelaySeconds: 40

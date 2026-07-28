@@ -2,9 +2,6 @@ spring:
   application:
     name: account-service
 
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:6088}
-
   datasource:
     url: ${ACCOUNT_DB_URL:jdbc:postgresql://localhost:6432/account_service}
     username: ${ACCOUNT_DB_USERNAME:postgres}
@@ -41,3 +38,6 @@ spring:
 
 notification-service:
   url: ${NOTIFICATION_SERVICE_URL:http://localhost:6084}
+
+server:
+  port: 6081

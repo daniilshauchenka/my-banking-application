@@ -1,0 +1,6 @@
+port: 6433
+databaseConfigKey: TRANSFER_DB_NAME
+usernameSecretKey: TRANSFER_DB_USERNAME
+passwordSecretKey: TRANSFER_DB_PASSWORD
+databaseName: transfer_service
+storage: 1Gi

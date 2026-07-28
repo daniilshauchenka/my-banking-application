@@ -1,6 +1,6 @@
 package com.example.accountservice.service;
 
- import com.example.accountservice.client.NotificationClient;
+import com.example.accountservice.client.NotificationClient;
 import com.example.accountservice.dto.AccountDto;
 import com.example.accountservice.dto.CreateAccountRequest;
 import com.example.accountservice.dto.UpdateAccountRequest;
@@ -8,6 +8,9 @@ import com.example.accountservice.exception.AccountAlreadyExistsException;
 import com.example.accountservice.exception.AccountNotFoundException;
 import com.example.accountservice.exception.InsufficientFundsException;
 import com.example.accountservice.model.Account;
+import com.example.accountservice.model.AccountOperation;
+import com.example.accountservice.model.AccountOperationType;
+import com.example.accountservice.repository.AccountOperationRepository;
 import com.example.accountservice.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +26,7 @@ import java.util.List;
 public class AccountService {
 
     private final AccountRepository accountRepository;
+    private final AccountOperationRepository accountOperationRepository;
     private final NotificationClient notificationClient;
 
     @Transactional(readOnly = true)
@@ -67,8 +71,23 @@ public class AccountService {
 
     @Transactional
     public AccountDto deposit(Long id, BigDecimal amount) {
+        return depositInternal(id, amount, null);
+    }
+
+    @Transactional
+    public AccountDto deposit(Long id, BigDecimal amount, String operationId) {
+        return depositInternal(id, amount, operationId);
+    }
+
+    private AccountDto depositInternal(Long id, BigDecimal amount, String operationId) {
         Account account = getAccountForUpdate(id);
+        AccountDto duplicate = findDuplicateOperation(account, amount, operationId, AccountOperationType.DEPOSIT);
+        if (duplicate != null) {
+            return duplicate;
+        }
+
         account.setBalance(account.getBalance().add(amount));
+        saveOperation(account.getId(), amount, operationId, AccountOperationType.DEPOSIT);
         notifyAccount(account.getId(), "ACCOUNT_DEPOSIT", amount,
                 "Account %s balance increased by %s".formatted(account.getId(), amount));
         return toDto(account);
@@ -76,11 +95,26 @@ public class AccountService {
 
     @Transactional
     public AccountDto withdraw(Long id, BigDecimal amount) {
+        return withdrawInternal(id, amount, null);
+    }
+
+    @Transactional
+    public AccountDto withdraw(Long id, BigDecimal amount, String operationId) {
+        return withdrawInternal(id, amount, operationId);
+    }
+
+    private AccountDto withdrawInternal(Long id, BigDecimal amount, String operationId) {
         Account account = getAccountForUpdate(id);
+        AccountDto duplicate = findDuplicateOperation(account, amount, operationId, AccountOperationType.WITHDRAW);
+        if (duplicate != null) {
+            return duplicate;
+        }
+
         if (account.getBalance().compareTo(amount) < 0) {
             throw new InsufficientFundsException("Not enough funds on account '%s'".formatted(id));
         }
         account.setBalance(account.getBalance().subtract(amount));
+        saveOperation(account.getId(), amount, operationId, AccountOperationType.WITHDRAW);
         notifyAccount(account.getId(), "ACCOUNT_WITHDRAW", amount,
                 "Account %s balance decreased by %s".formatted(account.getId(), amount));
         return toDto(account);
@@ -112,6 +146,36 @@ public class AccountService {
                 account.getBirthdate(),
                 account.getBalance()
         );
+    }
+
+    private AccountDto findDuplicateOperation(Account account, BigDecimal amount, String operationId, AccountOperationType type) {
+        if (operationId == null || operationId.isBlank()) {
+            return null;
+        }
+
+        return accountOperationRepository.findByOperationId(operationId)
+                .map(operation -> {
+                    if (!operation.getAccountId().equals(account.getId())
+                            || operation.getType() != type
+                            || operation.getAmount().compareTo(amount) != 0) {
+                        throw new IllegalArgumentException("Operation id '%s' was already used for another operation".formatted(operationId));
+                    }
+                    return toDto(account);
+                })
+                .orElse(null);
+    }
+
+    private void saveOperation(Long accountId, BigDecimal amount, String operationId, AccountOperationType type) {
+        if (operationId == null || operationId.isBlank()) {
+            return;
+        }
+
+        accountOperationRepository.save(AccountOperation.builder()
+                .operationId(operationId)
+                .accountId(accountId)
+                .type(type)
+                .amount(amount)
+                .build());
     }
 
     private void notifyAccount(Long accountId, String eventType, BigDecimal amount, String message) {

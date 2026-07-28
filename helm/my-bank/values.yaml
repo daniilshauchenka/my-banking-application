@@ -1,0 +1,98 @@
+global:
+  namespace:
+    create: false
+    name: my-bank
+  image:
+    repositoryPrefix: my-bank
+    tag: latest
+    pullPolicy: IfNotPresent
+  configMapName: my-bank-app-config
+  secretName: my-bank-app-secrets
+
+common-config:
+  secrets:
+    create: false
+    data: {}
+  config:
+    ACCOUNT_DB_NAME: account_service
+    TRANSFER_DB_NAME: transfer_service
+    CASH_DB_NAME: cash_service
+    NOTIFICATION_DB_NAME: notification_service
+    ACCOUNT_DB_URL: jdbc:postgresql://account-postgres:6432/account_service
+    TRANSFER_DB_URL: jdbc:postgresql://transfer-postgres:6433/transfer_service
+    CASH_DB_URL: jdbc:postgresql://cash-postgres:6434/cash_service
+    NOTIFICATION_DB_URL: jdbc:postgresql://notification-postgres:6435/notification_service
+    ACCOUNT_SERVICE_URL: http://account-service:6081
+    TRANSFER_SERVICE_URL: http://transfer-service:6082
+    CASH_SERVICE_URL: http://cash-service:6083
+    NOTIFICATION_SERVICE_URL: http://notification-service:6084
+    GATEWAY_URL: http://api-gateway:6080
+    KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
+    KEYCLOAK_AUTHORIZATION_URI: http://localhost:6060/realms/my-bank/protocol/openid-connect/auth
+    KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
+    KEYCLOAK_USER_INFO_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/userinfo
+    KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
+
+account-postgres:
+  port: 6432
+  databaseConfigKey: ACCOUNT_DB_NAME
+  usernameSecretKey: ACCOUNT_DB_USERNAME
+  passwordSecretKey: ACCOUNT_DB_PASSWORD
+  databaseName: account_service
+
+transfer-postgres:
+  port: 6433
+  databaseConfigKey: TRANSFER_DB_NAME
+  usernameSecretKey: TRANSFER_DB_USERNAME
+  passwordSecretKey: TRANSFER_DB_PASSWORD
+  databaseName: transfer_service
+
+cash-postgres:
+  port: 6434
+  databaseConfigKey: CASH_DB_NAME
+  usernameSecretKey: CASH_DB_USERNAME
+  passwordSecretKey: CASH_DB_PASSWORD
+  databaseName: cash_service
+
+notification-postgres:
+  port: 6435
+  databaseConfigKey: NOTIFICATION_DB_NAME
+  usernameSecretKey: NOTIFICATION_DB_USERNAME
+  passwordSecretKey: NOTIFICATION_DB_PASSWORD
+  databaseName: notification_service
+
+keycloak:
+  image: quay.io/keycloak/keycloak:26.0.7
+  port: 6060
+
+account-service:
+  port: 6081
+  image: account-service
+  envSecret: true
+
+transfer-service:
+  port: 6082
+  image: transfer-service
+  envSecret: true
+
+cash-service:
+  port: 6083
+  image: cash-service
+  envSecret: true
+
+notification-service:
+  port: 6084
+  image: notification-service
+  envSecret: true
+
+api-gateway:
+  port: 6080
+  image: api-gateway
+
+front-ui:
+  port: 6085
+  image: front-ui
+
+ingress:
+  enabled: true
+  host: my-bank.local

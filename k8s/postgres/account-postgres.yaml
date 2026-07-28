@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: account-postgres
+  namespace: my-bank
+spec:
+  selector:
+    app: account-postgres
+  ports:
+    - name: postgres
+      port: 6432
+      targetPort: 6432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: account-postgres
+  namespace: my-bank
+spec:
+  serviceName: account-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: account-postgres
+  template:
+    metadata:
+      labels:
+        app: account-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          args: ["postgres", "-p", "6432"]
+          ports:
+            - containerPort: 6432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: my-bank-app-config
+                  key: ACCOUNT_DB_NAME
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: my-bank-app-secrets
+                  key: ACCOUNT_DB_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: my-bank-app-secrets
+                  key: ACCOUNT_DB_PASSWORD
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-p", "6432", "-U", "postgres", "-d", "account_service"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

@@ -29,6 +29,8 @@ class TransferServiceIntegrationTests {
 
     private static HttpServer accountServer;
     private static final List<String> accountCalls = new ArrayList<>();
+    private static final List<String> accountBodies = new ArrayList<>();
+    private static boolean failReceiverDeposit;
 
     @Autowired
     private TransferService transferService;
@@ -42,9 +44,18 @@ class TransferServiceIntegrationTests {
         accountServer.createContext("/accounts/1/withdraw", exchange -> respondJson(exchange, """
                 {"id":1,"login":"user1","name":"user 1","birthdate":"2001-01-01","balance":90.00}
                 """));
-        accountServer.createContext("/accounts/2/deposit", exchange -> respondJson(exchange, """
-                {"id":2,"login":"user2","name":"user 2","birthdate":"1998-05-12","balance":260.00}
+        accountServer.createContext("/accounts/1/deposit", exchange -> respondJson(exchange, """
+                {"id":1,"login":"user1","name":"user 1","birthdate":"2001-01-01","balance":100.00}
                 """));
+        accountServer.createContext("/accounts/2/deposit", exchange -> {
+            if (failReceiverDeposit) {
+                respondStatus(exchange, 422);
+                return;
+            }
+            respondJson(exchange, """
+                    {"id":2,"login":"user2","name":"user 2","birthdate":"1998-05-12","balance":260.00}
+                    """);
+        });
         accountServer.start();
         registry.add("account-service.url", () -> "http://localhost:" + accountServer.getAddress().getPort());
     }
@@ -52,6 +63,8 @@ class TransferServiceIntegrationTests {
     @BeforeEach
     void setUp() {
         accountCalls.clear();
+        accountBodies.clear();
+        failReceiverDeposit = false;
         transferRecordRepository.deleteAll();
     }
 
@@ -69,6 +82,9 @@ class TransferServiceIntegrationTests {
         assertThat(response.fromBalance()).isEqualByComparingTo("90.00");
         assertThat(response.toBalance()).isEqualByComparingTo("260.00");
         assertThat(accountCalls).containsExactly("/accounts/1/withdraw", "/accounts/2/deposit");
+        assertThat(accountBodies.get(0)).contains("\"operationId\":\"transfer-");
+        assertThat(accountBodies.get(0)).contains("-withdraw\"");
+        assertThat(accountBodies.get(1)).contains("-deposit\"");
         assertThat(transferRecordRepository.findAll()).singleElement().satisfies(record -> {
             assertThat(record.getFromAccountId()).isEqualTo(1L);
             assertThat(record.getToAccountId()).isEqualTo(2L);
@@ -76,12 +92,47 @@ class TransferServiceIntegrationTests {
         });
     }
 
+    @Test
+    void failedReceiverDepositIsStoredForReliableCompensation() {
+        failReceiverDeposit = true;
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                transferService.transfer(new TransferRequest(1L, 2L, BigDecimal.TEN))
+        ).isInstanceOf(RuntimeException.class);
+
+        assertThat(transferRecordRepository.findAll()).singleElement().satisfies(record -> {
+            assertThat(record.getStatus()).isEqualTo(TransferStatus.COMPENSATION_PENDING);
+            assertThat(record.getErrorMessage()).isNotBlank();
+        });
+        assertThat(accountCalls).containsExactly("/accounts/1/withdraw", "/accounts/2/deposit");
+
+        failReceiverDeposit = false;
+        transferService.processPendingTransfers();
+
+        assertThat(transferRecordRepository.findAll()).singleElement()
+                .satisfies(record -> assertThat(record.getStatus()).isEqualTo(TransferStatus.COMPENSATED));
+        assertThat(accountCalls).containsExactly(
+                "/accounts/1/withdraw",
+                "/accounts/2/deposit",
+                "/accounts/1/deposit"
+        );
+        assertThat(accountBodies.get(2)).contains("-compensate\"");
+    }
+
     private static void respondJson(HttpExchange exchange, String body) throws IOException {
         accountCalls.add(exchange.getRequestURI().getPath());
+        accountBodies.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
         byte[] response = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().add("Content-Type", "application/json");
         exchange.sendResponseHeaders(200, response.length);
         exchange.getResponseBody().write(response);
+        exchange.close();
+    }
+
+    private static void respondStatus(HttpExchange exchange, int status) throws IOException {
+        accountCalls.add(exchange.getRequestURI().getPath());
+        accountBodies.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+        exchange.sendResponseHeaders(status, -1);
         exchange.close();
     }
 }
