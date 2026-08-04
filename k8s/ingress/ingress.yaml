@@ -36,13 +36,6 @@ spec:
                 name: api-gateway
                 port:
                   number: 6080
-          - path: /notifications
-            pathType: Prefix
-            backend:
-              service:
-                name: api-gateway
-                port:
-                  number: 6080
           - path: /realms
             pathType: Prefix
             backend:

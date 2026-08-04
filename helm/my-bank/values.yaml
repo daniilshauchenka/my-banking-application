@@ -25,8 +25,9 @@ common-config:
     ACCOUNT_SERVICE_URL: http://account-service:6081
     TRANSFER_SERVICE_URL: http://transfer-service:6082
     CASH_SERVICE_URL: http://cash-service:6083
-    NOTIFICATION_SERVICE_URL: http://notification-service:6084
     GATEWAY_URL: http://api-gateway:6080
+    KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
     KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
     KEYCLOAK_AUTHORIZATION_URI: http://localhost:6060/realms/my-bank/protocol/openid-connect/auth
     KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
@@ -64,6 +65,12 @@ notification-postgres:
 keycloak:
   image: quay.io/keycloak/keycloak:26.0.7
   port: 6060
+
+kafka:
+  image: bitnami/kafka:3.9
+  port: 9092
+  controllerPort: 9093
+  storage: 1Gi
 
 account-service:
   port: 6081

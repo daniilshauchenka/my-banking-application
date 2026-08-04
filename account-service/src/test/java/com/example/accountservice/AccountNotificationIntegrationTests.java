@@ -3,34 +3,41 @@ package com.example.accountservice;
 import com.example.accountservice.dto.CreateAccountRequest;
 import com.example.accountservice.repository.AccountRepository;
 import com.example.accountservice.service.AccountService;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@Testcontainers(disabledWithoutDocker = true)
 class AccountNotificationIntegrationTests {
 
-    private static HttpServer notificationServer;
-    private static final List<String> notificationBodies = Collections.synchronizedList(new ArrayList<>());
-    private static final List<String> notificationPaths = Collections.synchronizedList(new ArrayList<>());
+    private static final String TOPIC = "account.notifications.test";
+
+    @Container
+    private static final KafkaContainer KAFKA = new KafkaContainer(
+            DockerImageName.parse("confluentinc/cp-kafka:7.6.1")
+    );
 
     @Autowired
     private AccountService accountService;
@@ -39,57 +46,47 @@ class AccountNotificationIntegrationTests {
     private AccountRepository accountRepository;
 
     @DynamicPropertySource
-    static void registerProperties(DynamicPropertyRegistry registry) throws IOException {
-        startNotificationServer();
-        registry.add("notification-service.url", () -> "http://localhost:" + notificationServer.getAddress().getPort());
-    }
-
-    @BeforeAll
-    static void startNotificationServer() throws IOException {
-        if (notificationServer != null) {
-            return;
-        }
-        notificationServer = HttpServer.create(new InetSocketAddress(0), 0);
-        notificationServer.createContext("/notifications", AccountNotificationIntegrationTests::handleNotification);
-        notificationServer.start();
-    }
-
-    @AfterAll
-    static void stopNotificationServer() {
-        if (notificationServer != null) {
-            notificationServer.stop(0);
-        }
+    static void registerProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
+        registry.add("app.kafka.notifications-topic", () -> TOPIC);
     }
 
     @BeforeEach
     void setUp() {
-        notificationBodies.clear();
-        notificationPaths.clear();
         accountRepository.deleteAll();
     }
 
     @Test
-    void createAccountSendsNotification() {
-        Long accountId = accountService.create(new CreateAccountRequest(
-                "user1",
-                "user 1",
-                LocalDate.parse("2001-01-01"),
-                new BigDecimal("100.00")
-        )).id();
+    void createAccountSendsNotificationToKafka() {
+        try (Consumer<String, String> consumer = createStringConsumer()) {
+            consumer.subscribe(List.of(TOPIC));
 
-        assertThat(notificationPaths).containsExactly("/notifications");
-        assertThat(notificationBodies).singleElement()
-                .satisfies(body -> {
-                    assertThat(body).contains("\"accountId\":%s".formatted(accountId));
-                    assertThat(body).contains("\"eventType\":\"ACCOUNT_CREATED\"");
-                    assertThat(body).contains("\"amount\":100.00");
-                });
+            Long accountId = accountService.create(new CreateAccountRequest(
+                    "user1",
+                    "user 1",
+                    LocalDate.parse("2001-01-01"),
+                    new BigDecimal("100.00")
+            )).id();
+
+            String body = KafkaTestUtils.getSingleRecord(consumer, TOPIC, Duration.ofSeconds(10)).value();
+
+            assertThat(body).contains("\"accountId\":%s".formatted(accountId));
+            assertThat(body).contains("\"eventType\":\"ACCOUNT_CREATED\"");
+            assertThat(body).contains("\"amount\":100.00");
+        }
     }
 
-    private static void handleNotification(HttpExchange exchange) throws IOException {
-        notificationPaths.add(exchange.getRequestURI().getPath());
-        notificationBodies.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-        exchange.sendResponseHeaders(202, -1);
-        exchange.close();
+    private static Consumer<String, String> createStringConsumer() {
+        Map<String, Object> props = KafkaTestUtils.consumerProps(
+                "account-notifications-test-" + UUID.randomUUID(),
+                "true",
+                KAFKA.getBootstrapServers()
+        );
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                new StringDeserializer()
+        ).createConsumer();
     }
 }

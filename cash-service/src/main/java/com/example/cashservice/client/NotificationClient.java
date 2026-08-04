@@ -2,10 +2,10 @@ package com.example.cashservice.client;
 
 import com.example.cashservice.dto.NotificationRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpStatusCode;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 
@@ -13,17 +13,21 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 public class NotificationClient {
 
-    @Qualifier("notificationServiceRestClient")
-    private final RestClient restClient;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
+
+    @Value("${app.kafka.notifications-topic}")
+    private String notificationsTopic;
 
     public void notify(Long accountId, String eventType, BigDecimal amount, String message) {
-        restClient.post()
-                .uri("/notifications")
-                .body(new NotificationRequest(accountId, eventType, amount, message))
-                .retrieve()
-                .onStatus(HttpStatusCode::isError, (request, response) -> {
-                    throw new IllegalStateException("Notification service rejected cash notification");
-                })
-                .toBodilessEntity();
+        NotificationRequest request = new NotificationRequest(accountId, eventType, amount, message);
+        try {
+            kafkaTemplate.send(notificationsTopic, accountId.toString(), objectMapper.writeValueAsString(request)).get();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Kafka notification publishing was interrupted", exception);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Kafka notification publishing failed", exception);
+        }
     }
 }

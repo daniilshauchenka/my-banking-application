@@ -1,6 +1,6 @@
-package com.example.accountservice.client;
+package com.example.transferservice.client;
 
-import com.example.accountservice.dto.NotificationRequest;
+import com.example.transferservice.dto.NotificationRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;

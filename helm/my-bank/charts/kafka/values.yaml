@@ -1,0 +1,4 @@
+image: bitnami/kafka:3.9
+port: 9092
+controllerPort: 9093
+storage: 1Gi

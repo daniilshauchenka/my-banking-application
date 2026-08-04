@@ -23,6 +23,9 @@ dependencies:
   - name: keycloak
     version: 0.1.0
     repository: file://charts/keycloak
+  - name: kafka
+    version: 0.1.0
+    repository: file://charts/kafka
   - name: account-service
     version: 0.1.0
     repository: file://charts/account-service

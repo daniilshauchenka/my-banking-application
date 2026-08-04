@@ -32,7 +32,3 @@ spring:
               uri: ${CASH_SERVICE_URL:http://localhost:6083}
               predicates:
                 - Path=/cash/**
-            - id: notification-service
-              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:6084}
-              predicates:
-                - Path=/notifications/**

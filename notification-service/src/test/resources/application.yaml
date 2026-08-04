@@ -16,6 +16,10 @@ spring:
         dialect: org.hibernate.dialect.H2Dialect
   liquibase:
     enabled: false
+  kafka:
+    bootstrap-servers: localhost:9094
+    listener:
+      auto-startup: false
 
 eureka:
   client:
@@ -24,3 +28,5 @@ eureka:
 app:
   security:
     enabled: false
+  kafka:
+    notifications-topic: bank.notifications

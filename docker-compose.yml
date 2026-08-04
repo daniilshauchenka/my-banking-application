@@ -98,6 +98,26 @@ services:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     restart: unless-stopped
 
+  kafka:
+    image: bitnami/kafka:3.9
+    container_name: my-bank-kafka
+    environment:
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9094:9094"
+    volumes:
+      - kafka-data:/bitnami/kafka
+    restart: unless-stopped
+
   account-service:
     build:
       context: ./account-service
@@ -106,11 +126,10 @@ services:
       ACCOUNT_DB_URL: jdbc:postgresql://account-postgres:6432/${ACCOUNT_DB_NAME:-account_service}
       ACCOUNT_DB_USERNAME: ${ACCOUNT_DB_USERNAME:-postgres}
       ACCOUNT_DB_PASSWORD: ${ACCOUNT_DB_PASSWORD:-postgres}
-      NOTIFICATION_SERVICE_URL: http://notification-service:6084
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
-      KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
-      ACCOUNT_SERVICE_CLIENT_SECRET: ${ACCOUNT_SERVICE_CLIENT_SECRET:-account-secret}
     ports:
       - "6081:6081"
     depends_on:
@@ -118,7 +137,7 @@ services:
         condition: service_started
       account-postgres:
         condition: service_healthy
-      notification-service:
+      kafka:
         condition: service_started
     restart: unless-stopped
 
@@ -131,6 +150,8 @@ services:
       TRANSFER_DB_URL: jdbc:postgresql://transfer-postgres:6433/${TRANSFER_DB_NAME:-transfer_service}
       TRANSFER_DB_USERNAME: ${TRANSFER_DB_USERNAME:-postgres}
       TRANSFER_DB_PASSWORD: ${TRANSFER_DB_PASSWORD:-postgres}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
@@ -144,6 +165,8 @@ services:
         condition: service_healthy
       account-service:
         condition: service_started
+      kafka:
+        condition: service_started
     restart: unless-stopped
 
   notification-service:
@@ -154,6 +177,8 @@ services:
       NOTIFICATION_DB_URL: jdbc:postgresql://notification-postgres:6435/${NOTIFICATION_DB_NAME:-notification_service}
       NOTIFICATION_DB_USERNAME: ${NOTIFICATION_DB_USERNAME:-postgres}
       NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-postgres}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
     ports:
@@ -163,6 +188,8 @@ services:
         condition: service_started
       notification-postgres:
         condition: service_healthy
+      kafka:
+        condition: service_started
     restart: unless-stopped
 
   cash-service:
@@ -171,10 +198,11 @@ services:
     container_name: my-bank-cash-service
     environment:
       ACCOUNT_SERVICE_URL: http://account-service:6081
-      NOTIFICATION_SERVICE_URL: http://notification-service:6084
       CASH_DB_URL: jdbc:postgresql://cash-postgres:6434/${CASH_DB_NAME:-cash_service}
       CASH_DB_USERNAME: ${CASH_DB_USERNAME:-postgres}
       CASH_DB_PASSWORD: ${CASH_DB_PASSWORD:-postgres}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
@@ -188,7 +216,7 @@ services:
         condition: service_healthy
       account-service:
         condition: service_started
-      notification-service:
+      kafka:
         condition: service_started
     restart: unless-stopped
 
@@ -200,7 +228,6 @@ services:
       ACCOUNT_SERVICE_URL: http://account-service:6081
       TRANSFER_SERVICE_URL: http://transfer-service:6082
       CASH_SERVICE_URL: http://cash-service:6083
-      NOTIFICATION_SERVICE_URL: http://notification-service:6084
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
     ports:
@@ -235,3 +262,4 @@ volumes:
   transfer-postgres-data:
   cash-postgres-data:
   notification-postgres-data:
+  kafka-data:

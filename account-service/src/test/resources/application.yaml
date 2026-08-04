@@ -23,6 +23,9 @@ spring:
   liquibase:
     enabled: false
 
+  kafka:
+    bootstrap-servers: localhost:9094
+
 eureka:
   client:
     enabled: false
@@ -30,6 +33,5 @@ eureka:
 app:
   security:
     enabled: false
-
-notification-service:
-  url: http://localhost:1
+  kafka:
+    notifications-topic: bank.notifications
