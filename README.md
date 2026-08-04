@@ -6,9 +6,10 @@
 - `account-service` - account API, port `6081`, own PostgreSQL database.
 - `transfer-service` - transfer API, port `6082`, own PostgreSQL database.
 - `cash-service` - cash deposit and withdraw API, port `6083`, own PostgreSQL database.
-- `notification-service` - notification API, port `6084`, own PostgreSQL database, scheduled notification processing.
+- `notification-service` - Kafka notification consumer, management port `6084`, own PostgreSQL database, scheduled notification processing.
 - `front-ui` - Thymeleaf UI, port `6085`.
 - `keycloak` - OAuth 2.0 authorization server, port `6060`.
+- `kafka` - notification broker, internal port `9092`, local external port `9094`.
 
 ## Databases
 
@@ -59,6 +60,10 @@ Demo users:
 - `user1 / password`
 - `user2 / password`
 - `user3 / password`
+
+Notifications are delivered through Kafka topic `bank.notifications`.
+`account-service`, `cash-service` and `transfer-service` publish JSON events to Kafka.
+`notification-service` consumes these events and exposes only Actuator health endpoints on `6084`.
 
 
 ## Checks

@@ -7,7 +7,7 @@ spec:
   selector:
     app: notification-service
   ports:
-    - name: http
+    - name: management
       port: 6084
       targetPort: 6084
 ---
@@ -31,17 +31,19 @@ spec:
           image: my-bank/notification-service:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 6084
+            - name: management
+              containerPort: 6084
           envFrom:
             - configMapRef:
                 name: my-bank-app-config
             - secretRef:
                 name: my-bank-app-secrets
           env:
-            - name: SERVER_PORT
+            - name: MANAGEMENT_PORT
               value: "6084"
           readinessProbe:
-            tcpSocket:
-              port: 6084
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
             initialDelaySeconds: 40
             periodSeconds: 10

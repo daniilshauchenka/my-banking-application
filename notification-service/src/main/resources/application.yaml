@@ -12,12 +12,6 @@ spring:
     open-in-view: false
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:6060/realms/my-bank}
-          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:6060/realms/my-bank/protocol/openid-connect/certs}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
     consumer:
@@ -29,13 +23,20 @@ spring:
     listener:
       ack-mode: record
 
-server:
-  port: 6084
-
 app:
   kafka:
     notifications-topic: ${KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}
-  security:
-    enabled: true
   notifications:
     scheduler-delay: 5000
+
+management:
+  server:
+    port: ${MANAGEMENT_PORT:6084}
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true

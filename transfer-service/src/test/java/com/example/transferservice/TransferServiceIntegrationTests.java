@@ -9,6 +9,8 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,7 +118,7 @@ class TransferServiceIntegrationTests {
                 assertThat(record.getStatus()).isEqualTo(TransferStatus.COMPLETED);
             });
 
-            String body = KafkaTestUtils.getSingleRecord(consumer, TOPIC, Duration.ofSeconds(10)).value();
+            String body = getRecordWithEvent(consumer, "TRANSFER_COMPLETED");
             assertThat(body).contains("\"accountId\":1");
             assertThat(body).contains("\"eventType\":\"TRANSFER_COMPLETED\"");
         }
@@ -150,7 +152,7 @@ class TransferServiceIntegrationTests {
             );
             assertThat(accountBodies.get(2)).contains("-compensate\"");
 
-            String body = KafkaTestUtils.getSingleRecord(consumer, TOPIC, Duration.ofSeconds(10)).value();
+            String body = getRecordWithEvent(consumer, "TRANSFER_COMPENSATED");
             assertThat(body).contains("\"accountId\":1");
             assertThat(body).contains("\"eventType\":\"TRANSFER_COMPENSATED\"");
         }
@@ -168,7 +170,7 @@ class TransferServiceIntegrationTests {
             assertThat(transferRecordRepository.findAll()).singleElement()
                     .satisfies(record -> assertThat(record.getStatus()).isEqualTo(TransferStatus.FAILED));
 
-            String body = KafkaTestUtils.getSingleRecord(consumer, TOPIC, Duration.ofSeconds(10)).value();
+            String body = getRecordWithEvent(consumer, "TRANSFER_FAILED");
             assertThat(body).contains("\"accountId\":1");
             assertThat(body).contains("\"eventType\":\"TRANSFER_FAILED\"");
         }
@@ -193,9 +195,9 @@ class TransferServiceIntegrationTests {
 
     private static Consumer<String, String> createStringConsumer() {
         Map<String, Object> props = KafkaTestUtils.consumerProps(
+                KAFKA.getBootstrapServers(),
                 "transfer-notifications-test-" + UUID.randomUUID(),
-                "true",
-                KAFKA.getBootstrapServers()
+                "true"
         );
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         return new DefaultKafkaConsumerFactory<>(
@@ -203,5 +205,15 @@ class TransferServiceIntegrationTests {
                 new StringDeserializer(),
                 new StringDeserializer()
         ).createConsumer();
+    }
+
+    private static String getRecordWithEvent(Consumer<String, String> consumer, String eventType) {
+        ConsumerRecords<String, String> records = KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(10));
+        for (ConsumerRecord<String, String> record : records) {
+            if (record.value().contains("\"eventType\":\"" + eventType + "\"")) {
+                return record.value();
+            }
+        }
+        throw new AssertionError("Kafka record with eventType " + eventType + " was not found");
     }
 }

@@ -26,7 +26,5 @@ eureka:
     enabled: false
 
 app:
-  security:
-    enabled: false
   kafka:
     notifications-topic: bank.notifications

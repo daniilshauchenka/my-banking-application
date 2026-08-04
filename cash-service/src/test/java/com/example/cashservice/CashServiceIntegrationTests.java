@@ -115,9 +115,9 @@ class CashServiceIntegrationTests {
 
     private static Consumer<String, String> createStringConsumer() {
         Map<String, Object> props = KafkaTestUtils.consumerProps(
+                KAFKA.getBootstrapServers(),
                 "cash-notifications-test-" + UUID.randomUUID(),
-                "true",
-                KAFKA.getBootstrapServers()
+                "true"
         );
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         return new DefaultKafkaConsumerFactory<>(

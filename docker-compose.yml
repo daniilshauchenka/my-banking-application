@@ -179,13 +179,10 @@ services:
       NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-postgres}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
-      KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
-      KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
+      MANAGEMENT_PORT: 6084
     ports:
       - "6084:6084"
     depends_on:
-      keycloak:
-        condition: service_started
       notification-postgres:
         condition: service_healthy
       kafka:

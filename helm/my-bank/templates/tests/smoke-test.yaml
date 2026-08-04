@@ -21,4 +21,4 @@ spec:
           curl --silent --show-error --max-time 5 http://account-service:6081 >/dev/null;
           curl --silent --show-error --max-time 5 http://transfer-service:6082 >/dev/null;
           curl --silent --show-error --max-time 5 http://cash-service:6083 >/dev/null;
-          curl --silent --show-error --max-time 5 http://notification-service:6084 >/dev/null
+          curl --silent --show-error --max-time 5 http://notification-service:6084/actuator/health >/dev/null
