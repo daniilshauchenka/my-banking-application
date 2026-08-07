@@ -49,6 +49,7 @@ class AccountNotificationIntegrationTests {
     static void registerProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
         registry.add("app.kafka.notifications-topic", () -> TOPIC);
+        registry.add("app.outbox.scheduler-delay", () -> "100");
     }
 
     @BeforeEach

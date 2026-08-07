@@ -26,6 +26,11 @@ spec:
       labels:
         app: {{ .Chart.Name }}
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: {{ .Chart.Name }}
           image: {{ .Values.global.image.repositoryPrefix }}/{{ .Values.image }}:{{ .Values.global.image.tag }}
@@ -33,6 +38,11 @@ spec:
           ports:
             - name: management
               containerPort: {{ .Values.managementPort }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           envFrom:
             - configMapRef:
                 name: {{ .Values.global.configMapName }}
@@ -49,3 +59,11 @@ spec:
               port: management
             initialDelaySeconds: {{ .Values.initialDelaySeconds }}
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            initialDelaySeconds: {{ .Values.initialDelaySeconds }}
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

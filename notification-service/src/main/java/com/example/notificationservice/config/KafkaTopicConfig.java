@@ -12,10 +12,27 @@ public class KafkaTopicConfig {
 
     @Bean
     @ConditionalOnProperty(name = "spring.kafka.listener.auto-startup", havingValue = "true", matchIfMissing = true)
-    public NewTopic notificationsTopic(@Value("${app.kafka.notifications-topic}") String topicName) {
+    public NewTopic notificationsTopic(
+            @Value("${app.kafka.notifications-topic}") String topicName,
+            @Value("${app.kafka.notifications-topic-partitions:1}") int partitions,
+            @Value("${app.kafka.notifications-topic-replicas:1}") int replicas
+    ) {
         return TopicBuilder.name(topicName)
-                .partitions(1)
-                .replicas(1)
+                .partitions(partitions)
+                .replicas(replicas)
+                .build();
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "spring.kafka.listener.auto-startup", havingValue = "true", matchIfMissing = true)
+    public NewTopic notificationsDltTopic(
+            @Value("${app.kafka.notifications-dlt-topic:bank.notifications.dlt}") String topicName,
+            @Value("${app.kafka.notifications-topic-partitions:1}") int partitions,
+            @Value("${app.kafka.notifications-topic-replicas:1}") int replicas
+    ) {
+        return TopicBuilder.name(topicName)
+                .partitions(partitions)
+                .replicas(replicas)
                 .build();
     }
 }

@@ -1,4 +1,12 @@
 port: 6080
+managementPort: 7080
 image: api-gateway
 envSecret: false
 initialDelaySeconds: 40
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -51,9 +51,14 @@ spec:
                   key: ACCOUNT_DB_PASSWORD
           readinessProbe:
             exec:
-              command: ["pg_isready", "-p", "6432", "-U", "postgres", "-d", "account_service"]
+              command: ["sh", "-c", "pg_isready -p 6432 -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             initialDelaySeconds: 10
             periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -p 6432 -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            initialDelaySeconds: 30
+            periodSeconds: 20
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data

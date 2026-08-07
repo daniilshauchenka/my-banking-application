@@ -128,10 +128,13 @@ services:
       ACCOUNT_DB_PASSWORD: ${ACCOUNT_DB_PASSWORD:-postgres}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
+      OUTBOX_SCHEDULER_DELAY: 5000
+      MANAGEMENT_PORT: 7081
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
     ports:
       - "6081:6081"
+      - "7081:7081"
     depends_on:
       keycloak:
         condition: service_started
@@ -152,12 +155,15 @@ services:
       TRANSFER_DB_PASSWORD: ${TRANSFER_DB_PASSWORD:-postgres}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
+      OUTBOX_SCHEDULER_DELAY: 5000
+      MANAGEMENT_PORT: 7082
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
       TRANSFER_SERVICE_CLIENT_SECRET: ${TRANSFER_SERVICE_CLIENT_SECRET:-transfer-secret}
     ports:
       - "6082:6082"
+      - "7082:7082"
     depends_on:
       keycloak:
         condition: service_started
@@ -179,6 +185,12 @@ services:
       NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-postgres}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
+      KAFKA_NOTIFICATIONS_DLT_TOPIC: bank.notifications.dlt
+      KAFKA_NOTIFICATIONS_GROUP_ID: notification-service
+      KAFKA_NOTIFICATIONS_TOPIC_PARTITIONS: 1
+      KAFKA_NOTIFICATIONS_TOPIC_REPLICAS: 1
+      KAFKA_RETRY_INTERVAL: 1000
+      KAFKA_RETRY_MAX_ATTEMPTS: 3
       MANAGEMENT_PORT: 6084
     ports:
       - "6084:6084"
@@ -200,12 +212,15 @@ services:
       CASH_DB_PASSWORD: ${CASH_DB_PASSWORD:-postgres}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
+      OUTBOX_SCHEDULER_DELAY: 5000
+      MANAGEMENT_PORT: 7083
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
       CASH_SERVICE_CLIENT_SECRET: ${CASH_SERVICE_CLIENT_SECRET:-cash-secret}
     ports:
       - "6083:6083"
+      - "7083:7083"
     depends_on:
       keycloak:
         condition: service_started
@@ -227,8 +242,10 @@ services:
       CASH_SERVICE_URL: http://cash-service:6083
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
+      MANAGEMENT_PORT: 7080
     ports:
       - "6080:6080"
+      - "7080:7080"
     depends_on:
       - keycloak
       - account-service
@@ -247,8 +264,10 @@ services:
       KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
       KEYCLOAK_USER_INFO_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/userinfo
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
+      MANAGEMENT_PORT: 7085
     ports:
       - "6085:6085"
+      - "7085:7085"
     depends_on:
       - keycloak
       - api-gateway

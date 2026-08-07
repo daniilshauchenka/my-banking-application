@@ -1,6 +1,18 @@
 server:
   port: 6080
 
+management:
+  server:
+    port: ${MANAGEMENT_PORT:7080}
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
 spring:
   application:
     name: api-gateway

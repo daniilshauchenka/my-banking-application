@@ -1,14 +1,19 @@
 package com.example.notificationservice;
 
 import com.example.notificationservice.repository.NotificationRepository;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.KafkaContainer;
@@ -19,6 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -28,6 +34,7 @@ import static org.awaitility.Awaitility.await;
 class NotificationKafkaIntegrationTests {
 
     private static final String TOPIC = "notification.consumer.test";
+    private static final String DLT_TOPIC = "notification.consumer.test.dlt";
 
     @Container
     private static final KafkaContainer KAFKA = new KafkaContainer(
@@ -42,6 +49,9 @@ class NotificationKafkaIntegrationTests {
         registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
         registry.add("spring.kafka.listener.auto-startup", () -> "true");
         registry.add("app.kafka.notifications-topic", () -> TOPIC);
+        registry.add("app.kafka.notifications-dlt-topic", () -> DLT_TOPIC);
+        registry.add("app.kafka.retry-interval", () -> "100");
+        registry.add("app.kafka.retry-max-attempts", () -> "1");
     }
 
     @BeforeEach
@@ -65,6 +75,19 @@ class NotificationKafkaIntegrationTests {
         );
     }
 
+    @Test
+    void sendsInvalidKafkaNotificationToDlt() {
+        try (Consumer<String, String> consumer = createStringConsumer()) {
+            consumer.subscribe(List.of(DLT_TOPIC));
+
+            send("{not-json");
+
+            String body = KafkaTestUtils.getSingleRecord(consumer, DLT_TOPIC, Duration.ofSeconds(10)).value();
+            assertThat(body).isEqualTo("{not-json");
+            assertThat(notificationRepository.findAll()).isEmpty();
+        }
+    }
+
     private static void send(String body) {
         Map<String, Object> props = Map.of(
                 ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers(),
@@ -80,5 +103,19 @@ class NotificationKafkaIntegrationTests {
         } catch (Exception exception) {
             throw new IllegalStateException("Kafka test producer failed", exception);
         }
+    }
+
+    private static Consumer<String, String> createStringConsumer() {
+        Map<String, Object> props = KafkaTestUtils.consumerProps(
+                KAFKA.getBootstrapServers(),
+                "notification-dlt-test-" + UUID.randomUUID(),
+                "true"
+        );
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                new StringDeserializer()
+        ).createConsumer();
     }
 }

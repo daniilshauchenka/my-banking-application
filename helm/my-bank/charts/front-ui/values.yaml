@@ -1,4 +1,12 @@
 port: 6085
+managementPort: 7085
 image: front-ui
 envSecret: false
 initialDelaySeconds: 40
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

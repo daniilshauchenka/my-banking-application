@@ -15,17 +15,29 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
     consumer:
-      group-id: notification-service
-      auto-offset-reset: earliest
+      group-id: ${KAFKA_NOTIFICATIONS_GROUP_ID:notification-service}
+      auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET:earliest}
       enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     listener:
       ack-mode: record
+    producer:
+      acks: all
+      retries: 10
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
 
 app:
   kafka:
     notifications-topic: ${KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}
+    notifications-dlt-topic: ${KAFKA_NOTIFICATIONS_DLT_TOPIC:bank.notifications.dlt}
+    notifications-topic-partitions: ${KAFKA_NOTIFICATIONS_TOPIC_PARTITIONS:1}
+    notifications-topic-replicas: ${KAFKA_NOTIFICATIONS_TOPIC_REPLICAS:1}
+    retry-interval: ${KAFKA_RETRY_INTERVAL:1000}
+    retry-max-attempts: ${KAFKA_RETRY_MAX_ATTEMPTS:3}
   notifications:
     scheduler-delay: 5000
 

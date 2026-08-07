@@ -55,3 +55,17 @@ account-service:
 app:
   kafka:
     notifications-topic: ${KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}
+  outbox:
+    scheduler-delay: ${OUTBOX_SCHEDULER_DELAY:5000}
+
+management:
+  server:
+    port: ${MANAGEMENT_PORT:7083}
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true

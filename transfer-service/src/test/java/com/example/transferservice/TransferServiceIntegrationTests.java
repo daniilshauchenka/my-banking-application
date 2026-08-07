@@ -82,6 +82,7 @@ class TransferServiceIntegrationTests {
         registry.add("account-service.url", () -> "http://localhost:" + accountServer.getAddress().getPort());
         registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
         registry.add("app.kafka.notifications-topic", () -> TOPIC);
+        registry.add("app.outbox.scheduler-delay", () -> "100");
     }
 
     @BeforeEach
@@ -208,10 +209,13 @@ class TransferServiceIntegrationTests {
     }
 
     private static String getRecordWithEvent(Consumer<String, String> consumer, String eventType) {
-        ConsumerRecords<String, String> records = KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(10));
-        for (ConsumerRecord<String, String> record : records) {
-            if (record.value().contains("\"eventType\":\"" + eventType + "\"")) {
-                return record.value();
+        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+        while (System.nanoTime() < deadline) {
+            ConsumerRecords<String, String> records = KafkaTestUtils.getRecords(consumer, Duration.ofMillis(500));
+            for (ConsumerRecord<String, String> record : records) {
+                if (record.value().contains("\"eventType\":\"" + eventType + "\"")) {
+                    return record.value();
+                }
             }
         }
         throw new AssertionError("Kafka record with eventType " + eventType + " was not found");

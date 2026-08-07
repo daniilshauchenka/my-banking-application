@@ -70,6 +70,7 @@ class CashServiceIntegrationTests {
         registry.add("account-service.url", () -> "http://localhost:" + accountServer.getAddress().getPort());
         registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
         registry.add("app.kafka.notifications-topic", () -> TOPIC);
+        registry.add("app.outbox.scheduler-delay", () -> "100");
     }
 
     @BeforeEach
