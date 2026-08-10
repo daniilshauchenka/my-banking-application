@@ -41,6 +41,13 @@ public class AccountService {
         return toDto(getAccount(id));
     }
 
+    @Transactional(readOnly = true)
+    public AccountDto findByLogin(String login) {
+        return accountRepository.findByLogin(login)
+                .map(this::toDto)
+                .orElseThrow(() -> new AccountNotFoundException("Account with login '%s' was not found".formatted(login)));
+    }
+
     @Transactional
     public AccountDto create(CreateAccountRequest request) {
         if (accountRepository.existsByLogin(request.login())) {

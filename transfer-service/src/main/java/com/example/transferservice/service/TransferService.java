@@ -2,6 +2,7 @@ package com.example.transferservice.service;
 
 import com.example.transferservice.dto.TransferRequest;
 import com.example.transferservice.dto.TransferResponse;
+import com.example.transferservice.client.AccountClient;
 import com.example.transferservice.exception.TransferException;
 import com.example.transferservice.client.NotificationClient;
 import com.example.transferservice.model.TransferRecord;
@@ -10,7 +11,11 @@ import com.example.transferservice.repository.TransferRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,9 +26,21 @@ public class TransferService {
 
     private final TransferRecordRepository transferRecordRepository;
     private final TransferSagaProcessor transferSagaProcessor;
+    private final AccountClient accountClient;
     private final NotificationClient notificationClient;
 
+    @Transactional(noRollbackFor = RuntimeException.class)
     public TransferResponse transfer(TransferRequest request) {
+        return transferInternal(request);
+    }
+
+    @Transactional(noRollbackFor = RuntimeException.class)
+    public TransferResponse transfer(TransferRequest request, Authentication authentication) {
+        assertSenderOwner(request.fromAccountId(), authentication);
+        return transferInternal(request);
+    }
+
+    private TransferResponse transferInternal(TransferRequest request) {
         if (request.fromAccountId().equals(request.toAccountId())) {
             saveRecord(request, TransferStatus.FAILED, "Sender and receiver accounts must be different");
             notifyTransfer(request.fromAccountId(), "TRANSFER_FAILED", request.amount(),
@@ -75,6 +92,7 @@ public class TransferService {
     }
 
     @Scheduled(fixedDelayString = "${app.transfers.scheduler-delay:5000}")
+    @Transactional
     public void processPendingTransfers() {
         List<TransferStatus> statuses = List.of(
                 TransferStatus.PENDING,
@@ -121,5 +139,24 @@ public class TransferService {
         } catch (RuntimeException exception) {
             log.warn("Transfer notification failed for accountId={} eventType={}", accountId, eventType, exception);
         }
+    }
+
+    private void assertSenderOwner(Long accountId, Authentication authentication) {
+        String login = loginFrom(authentication);
+        if (!accountClient.getAccount(accountId).login().equals(login)) {
+            throw new AccessDeniedException("Access to another account is forbidden");
+        }
+    }
+
+    private String loginFrom(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            throw new AccessDeniedException("JWT authentication is required");
+        }
+
+        String login = jwt.getClaimAsString("preferred_username");
+        if (login == null || login.isBlank()) {
+            throw new AccessDeniedException("User login claim is required");
+        }
+        return login;
     }
 }

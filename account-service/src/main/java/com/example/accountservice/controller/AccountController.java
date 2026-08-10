@@ -33,8 +33,11 @@ public class AccountController {
     private final AccountService accountService;
 
     @GetMapping
-    public List<AccountDto> findAll() {
-        return accountService.findAll();
+    public List<AccountDto> findAll(Authentication authentication) {
+        if (isServiceClient(authentication)) {
+            return accountService.findAll();
+        }
+        return List.of(accountService.findByLogin(loginFrom(authentication)));
     }
 
     @GetMapping("/{id}")
@@ -78,17 +81,36 @@ public class AccountController {
             throw new AccessDeniedException("JWT authentication is required");
         }
 
+        if (isServiceClient(authentication)) {
+            return;
+        }
+
+        if (!account.login().equals(loginFrom(authentication))) {
+            throw new AccessDeniedException("Access to another account is forbidden");
+        }
+    }
+
+    private boolean isServiceClient(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            return false;
+        }
+
         String clientId = jwt.getClaimAsString("azp");
         if (clientId == null) {
             clientId = jwt.getClaimAsString("client_id");
         }
-        if ("cash-service".equals(clientId) || "transfer-service".equals(clientId)) {
-            return;
+        return "cash-service".equals(clientId) || "transfer-service".equals(clientId);
+    }
+
+    private String loginFrom(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            throw new AccessDeniedException("JWT authentication is required");
         }
 
         String login = jwt.getClaimAsString("preferred_username");
-        if (!account.login().equals(login)) {
-            throw new AccessDeniedException("Access to another account is forbidden");
+        if (login == null || login.isBlank()) {
+            throw new AccessDeniedException("User login claim is required");
         }
+        return login;
     }
 }
