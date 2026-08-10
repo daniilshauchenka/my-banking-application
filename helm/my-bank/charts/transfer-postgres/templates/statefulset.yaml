@@ -51,9 +51,14 @@ spec:
                   key: {{ .Values.passwordSecretKey }}
           readinessProbe:
             exec:
-              command: ["pg_isready", "-p", "{{ .Values.port }}", "-U", "postgres", "-d", "{{ .Values.databaseName }}"]
+              command: ["sh", "-c", "pg_isready -p {{ .Values.port }} -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             initialDelaySeconds: 10
             periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -p {{ .Values.port }} -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            initialDelaySeconds: 30
+            periodSeconds: 20
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data

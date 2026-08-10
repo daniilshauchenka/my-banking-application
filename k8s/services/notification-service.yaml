@@ -7,7 +7,7 @@ spec:
   selector:
     app: notification-service
   ports:
-    - name: http
+    - name: management
       port: 6084
       targetPort: 6084
 ---
@@ -26,22 +26,47 @@ spec:
       labels:
         app: notification-service
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: notification-service
           image: my-bank/notification-service:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 6084
+            - name: management
+              containerPort: 6084
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           envFrom:
             - configMapRef:
                 name: my-bank-app-config
             - secretRef:
                 name: my-bank-app-secrets
           env:
-            - name: SERVER_PORT
+            - name: MANAGEMENT_PORT
               value: "6084"
           readinessProbe:
-            tcpSocket:
-              port: 6084
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
             initialDelaySeconds: 40
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            initialDelaySeconds: 40
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

@@ -10,6 +10,9 @@ spec:
     - name: http
       port: 6081
       targetPort: 6081
+    - name: management
+      port: 7081
+      targetPort: 7081
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -26,12 +29,25 @@ spec:
       labels:
         app: account-service
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: account-service
           image: my-bank/account-service:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 6081
+            - name: http
+              containerPort: 6081
+            - name: management
+              containerPort: 7081
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           envFrom:
             - configMapRef:
                 name: my-bank-app-config
@@ -40,8 +56,24 @@ spec:
           env:
             - name: SERVER_PORT
               value: "6081"
+            - name: MANAGEMENT_PORT
+              value: "7081"
           readinessProbe:
-            tcpSocket:
-              port: 6081
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
             initialDelaySeconds: 40
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            initialDelaySeconds: 40
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

@@ -1,4 +1,12 @@
 port: 6082
+managementPort: 7082
 image: transfer-service
 envSecret: true
 initialDelaySeconds: 40
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

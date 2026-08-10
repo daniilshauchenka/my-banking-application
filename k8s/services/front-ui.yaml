@@ -10,6 +10,9 @@ spec:
     - name: http
       port: 6085
       targetPort: 6085
+    - name: management
+      port: 7085
+      targetPort: 7085
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -26,20 +29,49 @@ spec:
       labels:
         app: front-ui
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: front-ui
           image: my-bank/front-ui:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 6085
+            - name: http
+              containerPort: 6085
+            - name: management
+              containerPort: 7085
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           envFrom:
             - configMapRef:
                 name: my-bank-app-config
           env:
             - name: SERVER_PORT
               value: "6085"
+            - name: MANAGEMENT_PORT
+              value: "7085"
           readinessProbe:
-            tcpSocket:
-              port: 6085
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
             initialDelaySeconds: 40
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            initialDelaySeconds: 40
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

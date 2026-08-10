@@ -10,7 +10,11 @@ import com.example.cashservice.repository.CashOperationRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
@@ -24,11 +28,25 @@ public class CashService {
     private final NotificationClient notificationClient;
     private final CashOperationRepository cashOperationRepository;
 
+    @Transactional
     public AccountDto deposit(Long accountId, BigDecimal amount) {
         return changeBalance(accountId, amount, CashOperationType.DEPOSIT);
     }
 
+    @Transactional
+    public AccountDto deposit(Long accountId, BigDecimal amount, Authentication authentication) {
+        assertOwner(accountId, authentication);
+        return changeBalance(accountId, amount, CashOperationType.DEPOSIT);
+    }
+
+    @Transactional
     public AccountDto withdraw(Long accountId, BigDecimal amount) {
+        return changeBalance(accountId, amount, CashOperationType.WITHDRAW);
+    }
+
+    @Transactional
+    public AccountDto withdraw(Long accountId, BigDecimal amount, Authentication authentication) {
+        assertOwner(accountId, authentication);
         return changeBalance(accountId, amount, CashOperationType.WITHDRAW);
     }
 
@@ -68,5 +86,25 @@ public class CashService {
         } catch (RuntimeException exception) {
             log.warn("Cash notification failed for accountId={} type={}", accountId, type, exception);
         }
+    }
+
+    private void assertOwner(Long accountId, Authentication authentication) {
+        AccountDto account = accountClient.getAccount(accountId);
+        String login = loginFrom(authentication);
+        if (!account.login().equals(login)) {
+            throw new AccessDeniedException("Access to another account is forbidden");
+        }
+    }
+
+    private String loginFrom(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            throw new AccessDeniedException("JWT authentication is required");
+        }
+
+        String login = jwt.getClaimAsString("preferred_username");
+        if (login == null || login.isBlank()) {
+            throw new AccessDeniedException("User login claim is required");
+        }
+        return login;
     }
 }

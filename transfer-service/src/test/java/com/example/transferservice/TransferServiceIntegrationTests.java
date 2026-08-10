@@ -7,25 +7,47 @@ import com.example.transferservice.repository.TransferRecordRepository;
 import com.example.transferservice.service.TransferService;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@Testcontainers(disabledWithoutDocker = true)
 class TransferServiceIntegrationTests {
+
+    private static final String TOPIC = "transfer.notifications.test";
+
+    @Container
+    private static final KafkaContainer KAFKA = new KafkaContainer(
+            DockerImageName.parse("confluentinc/cp-kafka:7.6.1")
+    );
 
     private static HttpServer accountServer;
     private static final List<String> accountCalls = new ArrayList<>();
@@ -58,6 +80,9 @@ class TransferServiceIntegrationTests {
         });
         accountServer.start();
         registry.add("account-service.url", () -> "http://localhost:" + accountServer.getAddress().getPort());
+        registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
+        registry.add("app.kafka.notifications-topic", () -> TOPIC);
+        registry.add("app.outbox.scheduler-delay", () -> "100");
     }
 
     @BeforeEach
@@ -75,48 +100,81 @@ class TransferServiceIntegrationTests {
 
     @Test
     void transferWithdrawsFromSenderAndDepositsToReceiver() {
-        TransferResponse response = transferService.transfer(new TransferRequest(1L, 2L, BigDecimal.TEN));
+        try (Consumer<String, String> consumer = createStringConsumer()) {
+            consumer.subscribe(List.of(TOPIC));
 
-        assertThat(response.fromAccountId()).isEqualTo(1L);
-        assertThat(response.toAccountId()).isEqualTo(2L);
-        assertThat(response.fromBalance()).isEqualByComparingTo("90.00");
-        assertThat(response.toBalance()).isEqualByComparingTo("260.00");
-        assertThat(accountCalls).containsExactly("/accounts/1/withdraw", "/accounts/2/deposit");
-        assertThat(accountBodies.get(0)).contains("\"operationId\":\"transfer-");
-        assertThat(accountBodies.get(0)).contains("-withdraw\"");
-        assertThat(accountBodies.get(1)).contains("-deposit\"");
-        assertThat(transferRecordRepository.findAll()).singleElement().satisfies(record -> {
-            assertThat(record.getFromAccountId()).isEqualTo(1L);
-            assertThat(record.getToAccountId()).isEqualTo(2L);
-            assertThat(record.getStatus()).isEqualTo(TransferStatus.COMPLETED);
-        });
+            TransferResponse response = transferService.transfer(new TransferRequest(1L, 2L, BigDecimal.TEN));
+
+            assertThat(response.fromAccountId()).isEqualTo(1L);
+            assertThat(response.toAccountId()).isEqualTo(2L);
+            assertThat(response.fromBalance()).isEqualByComparingTo("90.00");
+            assertThat(response.toBalance()).isEqualByComparingTo("260.00");
+            assertThat(accountCalls).containsExactly("/accounts/1/withdraw", "/accounts/2/deposit");
+            assertThat(accountBodies.get(0)).contains("\"operationId\":\"transfer-");
+            assertThat(accountBodies.get(0)).contains("-withdraw\"");
+            assertThat(accountBodies.get(1)).contains("-deposit\"");
+            assertThat(transferRecordRepository.findAll()).singleElement().satisfies(record -> {
+                assertThat(record.getFromAccountId()).isEqualTo(1L);
+                assertThat(record.getToAccountId()).isEqualTo(2L);
+                assertThat(record.getStatus()).isEqualTo(TransferStatus.COMPLETED);
+            });
+
+            String body = getRecordWithEvent(consumer, "TRANSFER_COMPLETED");
+            assertThat(body).contains("\"accountId\":1");
+            assertThat(body).contains("\"eventType\":\"TRANSFER_COMPLETED\"");
+        }
     }
 
     @Test
     void failedReceiverDepositIsStoredForReliableCompensation() {
-        failReceiverDeposit = true;
+        try (Consumer<String, String> consumer = createStringConsumer()) {
+            consumer.subscribe(List.of(TOPIC));
+            failReceiverDeposit = true;
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
-                transferService.transfer(new TransferRequest(1L, 2L, BigDecimal.TEN))
-        ).isInstanceOf(RuntimeException.class);
+            org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                    transferService.transfer(new TransferRequest(1L, 2L, BigDecimal.TEN))
+            ).isInstanceOf(RuntimeException.class);
 
-        assertThat(transferRecordRepository.findAll()).singleElement().satisfies(record -> {
-            assertThat(record.getStatus()).isEqualTo(TransferStatus.COMPENSATION_PENDING);
-            assertThat(record.getErrorMessage()).isNotBlank();
-        });
-        assertThat(accountCalls).containsExactly("/accounts/1/withdraw", "/accounts/2/deposit");
+            assertThat(transferRecordRepository.findAll()).singleElement().satisfies(record -> {
+                assertThat(record.getStatus()).isEqualTo(TransferStatus.COMPENSATION_PENDING);
+                assertThat(record.getErrorMessage()).isNotBlank();
+            });
+            assertThat(accountCalls).containsExactly("/accounts/1/withdraw", "/accounts/2/deposit");
 
-        failReceiverDeposit = false;
-        transferService.processPendingTransfers();
+            failReceiverDeposit = false;
+            transferService.processPendingTransfers();
 
-        assertThat(transferRecordRepository.findAll()).singleElement()
-                .satisfies(record -> assertThat(record.getStatus()).isEqualTo(TransferStatus.COMPENSATED));
-        assertThat(accountCalls).containsExactly(
-                "/accounts/1/withdraw",
-                "/accounts/2/deposit",
-                "/accounts/1/deposit"
-        );
-        assertThat(accountBodies.get(2)).contains("-compensate\"");
+            assertThat(transferRecordRepository.findAll()).singleElement()
+                    .satisfies(record -> assertThat(record.getStatus()).isEqualTo(TransferStatus.COMPENSATED));
+            assertThat(accountCalls).containsExactly(
+                    "/accounts/1/withdraw",
+                    "/accounts/2/deposit",
+                    "/accounts/1/deposit"
+            );
+            assertThat(accountBodies.get(2)).contains("-compensate\"");
+
+            String body = getRecordWithEvent(consumer, "TRANSFER_COMPENSATED");
+            assertThat(body).contains("\"accountId\":1");
+            assertThat(body).contains("\"eventType\":\"TRANSFER_COMPENSATED\"");
+        }
+    }
+
+    @Test
+    void sameAccountTransferSendsFailedNotification() {
+        try (Consumer<String, String> consumer = createStringConsumer()) {
+            consumer.subscribe(List.of(TOPIC));
+
+            org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                    transferService.transfer(new TransferRequest(1L, 1L, BigDecimal.TEN))
+            ).isInstanceOf(RuntimeException.class);
+
+            assertThat(transferRecordRepository.findAll()).singleElement()
+                    .satisfies(record -> assertThat(record.getStatus()).isEqualTo(TransferStatus.FAILED));
+
+            String body = getRecordWithEvent(consumer, "TRANSFER_FAILED");
+            assertThat(body).contains("\"accountId\":1");
+            assertThat(body).contains("\"eventType\":\"TRANSFER_FAILED\"");
+        }
     }
 
     private static void respondJson(HttpExchange exchange, String body) throws IOException {
@@ -134,5 +192,32 @@ class TransferServiceIntegrationTests {
         accountBodies.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
         exchange.sendResponseHeaders(status, -1);
         exchange.close();
+    }
+
+    private static Consumer<String, String> createStringConsumer() {
+        Map<String, Object> props = KafkaTestUtils.consumerProps(
+                KAFKA.getBootstrapServers(),
+                "transfer-notifications-test-" + UUID.randomUUID(),
+                "true"
+        );
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                new StringDeserializer()
+        ).createConsumer();
+    }
+
+    private static String getRecordWithEvent(Consumer<String, String> consumer, String eventType) {
+        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+        while (System.nanoTime() < deadline) {
+            ConsumerRecords<String, String> records = KafkaTestUtils.getRecords(consumer, Duration.ofMillis(500));
+            for (ConsumerRecord<String, String> record : records) {
+                if (record.value().contains("\"eventType\":\"" + eventType + "\"")) {
+                    return record.value();
+                }
+            }
+        }
+        throw new AssertionError("Kafka record with eventType " + eventType + " was not found");
     }
 }

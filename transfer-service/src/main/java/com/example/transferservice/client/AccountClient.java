@@ -18,6 +18,16 @@ public class AccountClient {
     @Qualifier("accountServiceRestClient")
     private final RestClient restClient;
 
+    public AccountDto getAccount(Long accountId) {
+        return restClient.get()
+                .uri("/accounts/{accountId}", accountId)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> {
+                    throw new TransferException("Account service rejected account lookup");
+                })
+                .body(AccountDto.class);
+    }
+
     public AccountDto deposit(Long accountId, BigDecimal amount) {
         return deposit(accountId, amount, null);
     }

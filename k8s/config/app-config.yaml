@@ -17,8 +17,16 @@ data:
   ACCOUNT_SERVICE_URL: http://account-service:6081
   TRANSFER_SERVICE_URL: http://transfer-service:6082
   CASH_SERVICE_URL: http://cash-service:6083
-  NOTIFICATION_SERVICE_URL: http://notification-service:6084
   GATEWAY_URL: http://api-gateway:6080
+
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
+  KAFKA_NOTIFICATIONS_DLT_TOPIC: bank.notifications.dlt
+  KAFKA_NOTIFICATIONS_GROUP_ID: notification-service
+  KAFKA_NOTIFICATIONS_TOPIC_PARTITIONS: "1"
+  KAFKA_NOTIFICATIONS_TOPIC_REPLICAS: "1"
+  KAFKA_RETRY_INTERVAL: "1000"
+  KAFKA_RETRY_MAX_ATTEMPTS: "3"
 
   KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
   KEYCLOAK_AUTHORIZATION_URI: http://localhost:6060/realms/my-bank/protocol/openid-connect/auth

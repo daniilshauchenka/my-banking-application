@@ -9,6 +9,9 @@ import com.example.accountservice.service.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,13 +33,18 @@ public class AccountController {
     private final AccountService accountService;
 
     @GetMapping
-    public List<AccountDto> findAll() {
-        return accountService.findAll();
+    public List<AccountDto> findAll(Authentication authentication) {
+        if (isServiceClient(authentication)) {
+            return accountService.findAll();
+        }
+        return List.of(accountService.findByLogin(loginFrom(authentication)));
     }
 
     @GetMapping("/{id}")
-    public AccountDto findById(@PathVariable Long id) {
-        return accountService.findById(id);
+    public AccountDto findById(@PathVariable Long id, Authentication authentication) {
+        AccountDto account = accountService.findById(id);
+        assertOwnerOrService(account, authentication);
+        return account;
     }
 
     @PostMapping
@@ -46,7 +54,8 @@ public class AccountController {
     }
 
     @PutMapping("/{id}")
-    public AccountDto update(@PathVariable Long id, @Valid @RequestBody UpdateAccountRequest request) {
+    public AccountDto update(@PathVariable Long id, @Valid @RequestBody UpdateAccountRequest request, Authentication authentication) {
+        assertOwnerOrService(accountService.findById(id), authentication);
         return accountService.update(id, request);
     }
 
@@ -62,7 +71,46 @@ public class AccountController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable Long id, Authentication authentication) {
+        assertOwnerOrService(accountService.findById(id), authentication);
         accountService.delete(id);
+    }
+
+    private void assertOwnerOrService(AccountDto account, Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            throw new AccessDeniedException("JWT authentication is required");
+        }
+
+        if (isServiceClient(authentication)) {
+            return;
+        }
+
+        if (!account.login().equals(loginFrom(authentication))) {
+            throw new AccessDeniedException("Access to another account is forbidden");
+        }
+    }
+
+    private boolean isServiceClient(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            return false;
+        }
+
+        String clientId = jwt.getClaimAsString("azp");
+        if (clientId == null) {
+            clientId = jwt.getClaimAsString("client_id");
+        }
+        return "cash-service".equals(clientId) || "transfer-service".equals(clientId);
+    }
+
+    private String loginFrom(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            throw new AccessDeniedException("JWT authentication is required");
+        }
+
+        String login = jwt.getClaimAsString("preferred_username");
+        if (login == null || login.isBlank()) {
+            throw new AccessDeniedException("User login claim is required");
+        }
+        return login;
     }
 }

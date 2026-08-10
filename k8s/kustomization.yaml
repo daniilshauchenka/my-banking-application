@@ -9,6 +9,7 @@ resources:
   - postgres/transfer-postgres.yaml
   - postgres/cash-postgres.yaml
   - postgres/notification-postgres.yaml
+  - kafka/kafka.yaml
   - services/account-service.yaml
   - services/transfer-service.yaml
   - services/cash-service.yaml

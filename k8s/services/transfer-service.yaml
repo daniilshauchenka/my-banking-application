@@ -10,6 +10,9 @@ spec:
     - name: http
       port: 6082
       targetPort: 6082
+    - name: management
+      port: 7082
+      targetPort: 7082
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -26,12 +29,25 @@ spec:
       labels:
         app: transfer-service
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: transfer-service
           image: my-bank/transfer-service:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 6082
+            - name: http
+              containerPort: 6082
+            - name: management
+              containerPort: 7082
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           envFrom:
             - configMapRef:
                 name: my-bank-app-config
@@ -40,8 +56,24 @@ spec:
           env:
             - name: SERVER_PORT
               value: "6082"
+            - name: MANAGEMENT_PORT
+              value: "7082"
           readinessProbe:
-            tcpSocket:
-              port: 6082
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
             initialDelaySeconds: 40
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            initialDelaySeconds: 40
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

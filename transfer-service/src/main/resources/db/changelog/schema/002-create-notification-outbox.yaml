@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-notification-outbox
+      author: codex
+      changes:
+        - createTable:
+            tableName: notification_outbox
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: event_key
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: topic
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attempts
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_error
+                  type: varchar(1024)
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sent_at
+                  type: timestamp with time zone
+        - createIndex:
+            tableName: notification_outbox
+            indexName: idx_notification_outbox_sent_created
+            columns:
+              - column:
+                  name: sent_at
+              - column:
+                  name: created_at

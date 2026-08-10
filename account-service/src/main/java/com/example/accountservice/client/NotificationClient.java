@@ -1,11 +1,8 @@
 package com.example.accountservice.client;
 
-import com.example.accountservice.dto.NotificationRequest;
+import com.example.accountservice.service.NotificationOutboxService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 
@@ -13,17 +10,9 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 public class NotificationClient {
 
-    @Qualifier("notificationServiceRestClient")
-    private final RestClient restClient;
+    private final NotificationOutboxService notificationOutboxService;
 
     public void notify(Long accountId, String eventType, BigDecimal amount, String message) {
-        restClient.post()
-                .uri("/notifications")
-                .body(new NotificationRequest(accountId, eventType, amount, message))
-                .retrieve()
-                .onStatus(HttpStatusCode::isError, (request, response) -> {
-                    throw new IllegalStateException("Notification service rejected account notification");
-                })
-                .toBodilessEntity();
+        notificationOutboxService.enqueue(accountId, eventType, amount, message);
     }
 }

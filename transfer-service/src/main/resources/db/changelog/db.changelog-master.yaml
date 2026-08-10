@@ -2,4 +2,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/schema/001-create-transfer-records.yaml
   - include:
+      file: db/changelog/schema/002-create-notification-outbox.yaml
+  - include:
       file: db/changelog/mock/001-insert-transfer-records.yaml

@@ -10,6 +10,9 @@ spec:
     - name: http
       port: 6083
       targetPort: 6083
+    - name: management
+      port: 7083
+      targetPort: 7083
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -26,12 +29,25 @@ spec:
       labels:
         app: cash-service
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: cash-service
           image: my-bank/cash-service:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 6083
+            - name: http
+              containerPort: 6083
+            - name: management
+              containerPort: 7083
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           envFrom:
             - configMapRef:
                 name: my-bank-app-config
@@ -40,8 +56,24 @@ spec:
           env:
             - name: SERVER_PORT
               value: "6083"
+            - name: MANAGEMENT_PORT
+              value: "7083"
           readinessProbe:
-            tcpSocket:
-              port: 6083
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
             initialDelaySeconds: 40
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            initialDelaySeconds: 40
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

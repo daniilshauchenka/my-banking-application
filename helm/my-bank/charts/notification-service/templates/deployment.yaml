@@ -7,9 +7,9 @@ spec:
   selector:
     app: {{ .Chart.Name }}
   ports:
-    - name: http
-      port: {{ .Values.port }}
-      targetPort: {{ .Values.port }}
+    - name: management
+      port: {{ .Values.managementPort }}
+      targetPort: {{ .Values.managementPort }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -26,12 +26,23 @@ spec:
       labels:
         app: {{ .Chart.Name }}
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: {{ .Chart.Name }}
           image: {{ .Values.global.image.repositoryPrefix }}/{{ .Values.image }}:{{ .Values.global.image.tag }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.port }}
+            - name: management
+              containerPort: {{ .Values.managementPort }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           envFrom:
             - configMapRef:
                 name: {{ .Values.global.configMapName }}
@@ -40,10 +51,19 @@ spec:
                 name: {{ .Values.global.secretName }}
             {{- end }}
           env:
-            - name: SERVER_PORT
-              value: {{ .Values.port | quote }}
+            - name: MANAGEMENT_PORT
+              value: {{ .Values.managementPort | quote }}
           readinessProbe:
-            tcpSocket:
-              port: {{ .Values.port }}
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
             initialDelaySeconds: {{ .Values.initialDelaySeconds }}
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            initialDelaySeconds: {{ .Values.initialDelaySeconds }}
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

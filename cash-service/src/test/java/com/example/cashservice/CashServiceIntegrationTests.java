@@ -6,32 +6,49 @@ import com.example.cashservice.repository.CashOperationRepository;
 import com.example.cashservice.service.CashService;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@Testcontainers(disabledWithoutDocker = true)
 class CashServiceIntegrationTests {
 
+    private static final String TOPIC = "cash.notifications.test";
+
+    @Container
+    private static final KafkaContainer KAFKA = new KafkaContainer(
+            DockerImageName.parse("confluentinc/cp-kafka:7.6.1")
+    );
+
     private static HttpServer accountServer;
-    private static HttpServer notificationServer;
     private static final List<String> accountCalls = new ArrayList<>();
-    private static final List<String> notifications = new ArrayList<>();
 
     @Autowired
     private CashService cashService;
@@ -50,41 +67,42 @@ class CashServiceIntegrationTests {
                 """));
         accountServer.start();
 
-        notificationServer = HttpServer.create(new InetSocketAddress(0), 0);
-        notificationServer.createContext("/notifications", CashServiceIntegrationTests::recordNotification);
-        notificationServer.start();
-
         registry.add("account-service.url", () -> "http://localhost:" + accountServer.getAddress().getPort());
-        registry.add("notification-service.url", () -> "http://localhost:" + notificationServer.getAddress().getPort());
+        registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
+        registry.add("app.kafka.notifications-topic", () -> TOPIC);
+        registry.add("app.outbox.scheduler-delay", () -> "100");
     }
 
     @BeforeEach
     void setUp() {
         accountCalls.clear();
-        notifications.clear();
         cashOperationRepository.deleteAll();
     }
 
     @AfterAll
     static void tearDown() {
         accountServer.stop(0);
-        notificationServer.stop(0);
     }
 
     @Test
     void depositUpdatesAccountAndCreatesNotification() {
-        AccountDto account = cashService.deposit(1L, BigDecimal.valueOf(5));
+        try (Consumer<String, String> consumer = createStringConsumer()) {
+            consumer.subscribe(List.of(TOPIC));
 
-        assertThat(account).isEqualTo(new AccountDto(1L, "user1", "user 1", LocalDate.parse("2001-01-01"), new BigDecimal("105.00")));
-        assertThat(accountCalls).containsExactly("/accounts/1/deposit");
-        assertThat(notifications).singleElement().satisfies(body -> {
+            AccountDto account = cashService.deposit(1L, BigDecimal.valueOf(5));
+
+            assertThat(account).isEqualTo(new AccountDto(1L, "user1", "user 1", LocalDate.parse("2001-01-01"), new BigDecimal("105.00")));
+            assertThat(accountCalls).containsExactly("/accounts/1/deposit");
+
+            String body = KafkaTestUtils.getSingleRecord(consumer, TOPIC, Duration.ofSeconds(10)).value();
             assertThat(body).contains("\"accountId\":1");
             assertThat(body).contains("\"eventType\":\"CASH_DEPOSIT\"");
-        });
-        assertThat(cashOperationRepository.findAll()).singleElement().satisfies(operation -> {
-            assertThat(operation.getAccountId()).isEqualTo(1L);
-            assertThat(operation.getStatus()).isEqualTo(CashOperationStatus.COMPLETED);
-        });
+
+            assertThat(cashOperationRepository.findAll()).singleElement().satisfies(operation -> {
+                assertThat(operation.getAccountId()).isEqualTo(1L);
+                assertThat(operation.getStatus()).isEqualTo(CashOperationStatus.COMPLETED);
+            });
+        }
     }
 
     private static void respondJson(HttpExchange exchange, String body) throws IOException {
@@ -96,9 +114,17 @@ class CashServiceIntegrationTests {
         exchange.close();
     }
 
-    private static void recordNotification(HttpExchange exchange) throws IOException {
-        notifications.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-        exchange.sendResponseHeaders(202, -1);
-        exchange.close();
+    private static Consumer<String, String> createStringConsumer() {
+        Map<String, Object> props = KafkaTestUtils.consumerProps(
+                KAFKA.getBootstrapServers(),
+                "cash-notifications-test-" + UUID.randomUUID(),
+                "true"
+        );
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                new StringDeserializer()
+        ).createConsumer();
     }
 }

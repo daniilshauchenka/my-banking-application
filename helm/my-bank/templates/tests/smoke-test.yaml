@@ -15,10 +15,12 @@ spec:
         - /bin/sh
         - -ec
         - >
-          curl --silent --show-error --max-time 5 http://api-gateway:6080 >/dev/null;
-          curl --silent --show-error --max-time 5 http://front-ui:6085 >/dev/null;
-          curl --silent --show-error --max-time 5 http://keycloak:6060/realms/my-bank >/dev/null;
-          curl --silent --show-error --max-time 5 http://account-service:6081 >/dev/null;
-          curl --silent --show-error --max-time 5 http://transfer-service:6082 >/dev/null;
-          curl --silent --show-error --max-time 5 http://cash-service:6083 >/dev/null;
-          curl --silent --show-error --max-time 5 http://notification-service:6084 >/dev/null
+          curl --fail --silent --show-error --max-time 5 http://keycloak:6060/realms/my-bank >/dev/null;
+          curl --fail --silent --show-error --max-time 5 http://api-gateway:7080/actuator/health >/dev/null;
+          curl --fail --silent --show-error --max-time 5 http://front-ui:7085/actuator/health >/dev/null;
+          curl --fail --silent --show-error --max-time 5 http://account-service:7081/actuator/health >/dev/null;
+          curl --fail --silent --show-error --max-time 5 http://transfer-service:7082/actuator/health >/dev/null;
+          curl --fail --silent --show-error --max-time 5 http://cash-service:7083/actuator/health >/dev/null;
+          curl --fail --silent --show-error --max-time 5 http://notification-service:6084/actuator/health >/dev/null;
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 5 http://api-gateway:6080/accounts)" = "401";
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 5 http://account-service:6081/accounts)" = "401"

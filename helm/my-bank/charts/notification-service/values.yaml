@@ -1,4 +1,11 @@
-port: 6084
 image: notification-service
 envSecret: true
+managementPort: 6084
 initialDelaySeconds: 40
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
