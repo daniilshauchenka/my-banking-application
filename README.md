@@ -112,3 +112,10 @@ Run Helm chart tests after deployment:
 ```text
 http://my-bank.local
 ```
+
+## Observability
+local observability stack starts with docker compose
+- Zipkin
+- Prometheus
+- Grafana
+- Kibana
