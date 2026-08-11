@@ -7,6 +7,7 @@ import com.example.cashservice.model.CashOperation;
 import com.example.cashservice.model.CashOperationStatus;
 import com.example.cashservice.model.CashOperationType;
 import com.example.cashservice.repository.CashOperationRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,30 +28,38 @@ public class CashService {
     private final AccountClient accountClient;
     private final NotificationClient notificationClient;
     private final CashOperationRepository cashOperationRepository;
+    private final MeterRegistry meterRegistry;
 
     @Transactional
     public AccountDto deposit(Long accountId, BigDecimal amount) {
-        return changeBalance(accountId, amount, CashOperationType.DEPOSIT);
+        return changeBalance(accountId, amount, CashOperationType.DEPOSIT, "unknown");
     }
 
     @Transactional
     public AccountDto deposit(Long accountId, BigDecimal amount, Authentication authentication) {
-        assertOwner(accountId, authentication);
-        return changeBalance(accountId, amount, CashOperationType.DEPOSIT);
+        String login = loginFrom(authentication);
+        assertOwner(accountId, login);
+        return changeBalance(accountId, amount, CashOperationType.DEPOSIT, login);
     }
 
     @Transactional
     public AccountDto withdraw(Long accountId, BigDecimal amount) {
-        return changeBalance(accountId, amount, CashOperationType.WITHDRAW);
+        return changeBalance(accountId, amount, CashOperationType.WITHDRAW, "unknown");
     }
 
     @Transactional
     public AccountDto withdraw(Long accountId, BigDecimal amount, Authentication authentication) {
-        assertOwner(accountId, authentication);
-        return changeBalance(accountId, amount, CashOperationType.WITHDRAW);
+        String login = loginFrom(authentication);
+        try {
+            assertOwner(accountId, login);
+        } catch (RuntimeException exception) {
+            meterRegistry.counter("bank.cash.withdraw.failed", "login", login).increment();
+            throw exception;
+        }
+        return changeBalance(accountId, amount, CashOperationType.WITHDRAW, login);
     }
 
-    private AccountDto changeBalance(Long accountId, BigDecimal amount, CashOperationType type) {
+    private AccountDto changeBalance(Long accountId, BigDecimal amount, CashOperationType type, String login) {
         try {
             AccountDto account = type == CashOperationType.DEPOSIT
                     ? accountClient.deposit(accountId, amount)
@@ -60,6 +69,9 @@ public class CashService {
             return account;
         } catch (RuntimeException exception) {
             saveOperation(accountId, type, amount, CashOperationStatus.FAILED, exception.getMessage());
+            if (type == CashOperationType.WITHDRAW) {
+                meterRegistry.counter("bank.cash.withdraw.failed", "login", login).increment();
+            }
             throw exception;
         }
     }
@@ -88,9 +100,8 @@ public class CashService {
         }
     }
 
-    private void assertOwner(Long accountId, Authentication authentication) {
+    private void assertOwner(Long accountId, String login) {
         AccountDto account = accountClient.getAccount(accountId);
-        String login = loginFrom(authentication);
         if (!account.login().equals(login)) {
             throw new AccessDeniedException("Access to another account is forbidden");
         }
