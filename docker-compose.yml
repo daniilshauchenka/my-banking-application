@@ -131,6 +131,9 @@ services:
       OUTBOX_SCHEDULER_DELAY: 5000
       MANAGEMENT_PORT: 7081
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SPRING_PROFILES_ACTIVE: elk
+      LOGSTASH_HOST: logstash
+      LOGSTASH_PORT: 5000
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
     ports:
@@ -144,6 +147,8 @@ services:
       kafka:
         condition: service_started
       zipkin:
+        condition: service_started
+      logstash:
         condition: service_started
     restart: unless-stopped
 
@@ -161,6 +166,9 @@ services:
       OUTBOX_SCHEDULER_DELAY: 5000
       MANAGEMENT_PORT: 7082
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SPRING_PROFILES_ACTIVE: elk
+      LOGSTASH_HOST: logstash
+      LOGSTASH_PORT: 5000
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
@@ -178,6 +186,8 @@ services:
       kafka:
         condition: service_started
       zipkin:
+        condition: service_started
+      logstash:
         condition: service_started
     restart: unless-stopped
 
@@ -199,6 +209,9 @@ services:
       KAFKA_RETRY_MAX_ATTEMPTS: 3
       MANAGEMENT_PORT: 6084
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SPRING_PROFILES_ACTIVE: elk
+      LOGSTASH_HOST: logstash
+      LOGSTASH_PORT: 5000
     ports:
       - "6084:6084"
     depends_on:
@@ -207,6 +220,8 @@ services:
       kafka:
         condition: service_started
       zipkin:
+        condition: service_started
+      logstash:
         condition: service_started
     restart: unless-stopped
 
@@ -224,6 +239,9 @@ services:
       OUTBOX_SCHEDULER_DELAY: 5000
       MANAGEMENT_PORT: 7083
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SPRING_PROFILES_ACTIVE: elk
+      LOGSTASH_HOST: logstash
+      LOGSTASH_PORT: 5000
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
@@ -242,6 +260,8 @@ services:
         condition: service_started
       zipkin:
         condition: service_started
+      logstash:
+        condition: service_started
     restart: unless-stopped
 
   api-gateway:
@@ -256,6 +276,9 @@ services:
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       MANAGEMENT_PORT: 7080
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SPRING_PROFILES_ACTIVE: elk
+      LOGSTASH_HOST: logstash
+      LOGSTASH_PORT: 5000
     ports:
       - "6080:6080"
       - "7080:7080"
@@ -266,6 +289,7 @@ services:
       - cash-service
       - notification-service
       - zipkin
+      - logstash
     restart: unless-stopped
 
   front-ui:
@@ -280,6 +304,9 @@ services:
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       MANAGEMENT_PORT: 7085
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SPRING_PROFILES_ACTIVE: elk
+      LOGSTASH_HOST: logstash
+      LOGSTASH_PORT: 5000
     ports:
       - "6085:6085"
       - "7085:7085"
@@ -287,6 +314,7 @@ services:
       - keycloak
       - api-gateway
       - zipkin
+      - logstash
     restart: unless-stopped
 
   zipkin:
@@ -336,6 +364,43 @@ services:
       - prometheus
     restart: unless-stopped
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.5
+    container_name: my-bank-elasticsearch
+    environment:
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - ./elk/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.15.5
+    container_name: my-bank-logstash
+    ports:
+      - "5000:5000"
+      - "9600:9600"
+    volumes:
+      - ./elk/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.5
+    container_name: my-bank-kibana
+    ports:
+      - "5601:5601"
+    volumes:
+      - ./elk/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+      - ./elk/kibana/provisioning:/usr/share/kibana/provisioning:ro
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
 volumes:
   account-postgres-data:
   transfer-postgres-data:
@@ -344,3 +409,4 @@ volumes:
   kafka-data:
   prometheus-data:
   grafana-data:
+  elasticsearch-data:
