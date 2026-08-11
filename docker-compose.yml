@@ -130,6 +130,7 @@ services:
       KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
       OUTBOX_SCHEDULER_DELAY: 5000
       MANAGEMENT_PORT: 7081
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
     ports:
@@ -141,6 +142,8 @@ services:
       account-postgres:
         condition: service_healthy
       kafka:
+        condition: service_started
+      zipkin:
         condition: service_started
     restart: unless-stopped
 
@@ -157,6 +160,7 @@ services:
       KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
       OUTBOX_SCHEDULER_DELAY: 5000
       MANAGEMENT_PORT: 7082
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
@@ -172,6 +176,8 @@ services:
       account-service:
         condition: service_started
       kafka:
+        condition: service_started
+      zipkin:
         condition: service_started
     restart: unless-stopped
 
@@ -192,12 +198,15 @@ services:
       KAFKA_RETRY_INTERVAL: 1000
       KAFKA_RETRY_MAX_ATTEMPTS: 3
       MANAGEMENT_PORT: 6084
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     ports:
       - "6084:6084"
     depends_on:
       notification-postgres:
         condition: service_healthy
       kafka:
+        condition: service_started
+      zipkin:
         condition: service_started
     restart: unless-stopped
 
@@ -214,6 +223,7 @@ services:
       KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
       OUTBOX_SCHEDULER_DELAY: 5000
       MANAGEMENT_PORT: 7083
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       KEYCLOAK_TOKEN_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/token
@@ -230,6 +240,8 @@ services:
         condition: service_started
       kafka:
         condition: service_started
+      zipkin:
+        condition: service_started
     restart: unless-stopped
 
   api-gateway:
@@ -243,6 +255,7 @@ services:
       KEYCLOAK_ISSUER_URI: http://localhost:6060/realms/my-bank
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       MANAGEMENT_PORT: 7080
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     ports:
       - "6080:6080"
       - "7080:7080"
@@ -252,6 +265,7 @@ services:
       - transfer-service
       - cash-service
       - notification-service
+      - zipkin
     restart: unless-stopped
 
   front-ui:
@@ -265,12 +279,23 @@ services:
       KEYCLOAK_USER_INFO_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/userinfo
       KEYCLOAK_JWK_SET_URI: http://keycloak:6060/realms/my-bank/protocol/openid-connect/certs
       MANAGEMENT_PORT: 7085
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     ports:
       - "6085:6085"
       - "7085:7085"
     depends_on:
       - keycloak
       - api-gateway
+      - zipkin
+    restart: unless-stopped
+
+  zipkin:
+    image: openzipkin/zipkin:3.4
+    container_name: my-bank-zipkin
+    env_file:
+      - ./zipkin/zipkin.env
+    ports:
+      - "9411:9411"
     restart: unless-stopped
 
   prometheus:
