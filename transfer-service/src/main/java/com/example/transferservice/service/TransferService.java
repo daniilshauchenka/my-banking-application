@@ -3,11 +3,13 @@ package com.example.transferservice.service;
 import com.example.transferservice.dto.TransferRequest;
 import com.example.transferservice.dto.TransferResponse;
 import com.example.transferservice.client.AccountClient;
+import com.example.transferservice.dto.AccountDto;
 import com.example.transferservice.exception.TransferException;
 import com.example.transferservice.client.NotificationClient;
 import com.example.transferservice.model.TransferRecord;
 import com.example.transferservice.model.TransferStatus;
 import com.example.transferservice.repository.TransferRecordRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,16 +30,51 @@ public class TransferService {
     private final TransferSagaProcessor transferSagaProcessor;
     private final AccountClient accountClient;
     private final NotificationClient notificationClient;
+    private final MeterRegistry meterRegistry;
 
     @Transactional(noRollbackFor = RuntimeException.class)
     public TransferResponse transfer(TransferRequest request) {
-        return transferInternal(request);
+        return transferWithMetrics(request, "unknown", "unknown");
     }
 
     @Transactional(noRollbackFor = RuntimeException.class)
     public TransferResponse transfer(TransferRequest request, Authentication authentication) {
-        assertSenderOwner(request.fromAccountId(), authentication);
-        return transferInternal(request);
+        String fromLogin = loginFrom(authentication);
+        try {
+            assertSenderOwner(request.fromAccountId(), fromLogin);
+        } catch (RuntimeException exception) {
+            meterRegistry.counter(
+                    "bank.transfer.failed",
+                    "fromLogin", fromLogin,
+                    "toLogin", "unknown"
+            ).increment();
+            throw exception;
+        }
+        AccountDto toAccount;
+        try {
+            toAccount = accountClient.getAccount(request.toAccountId());
+        } catch (RuntimeException exception) {
+            meterRegistry.counter(
+                    "bank.transfer.failed",
+                    "fromLogin", fromLogin,
+                    "toLogin", "unknown"
+            ).increment();
+            throw exception;
+        }
+        return transferWithMetrics(request, fromLogin, toAccount.login());
+    }
+
+    private TransferResponse transferWithMetrics(TransferRequest request, String fromLogin, String toLogin) {
+        try {
+            return transferInternal(request);
+        } catch (RuntimeException exception) {
+            meterRegistry.counter(
+                    "bank.transfer.failed",
+                    "fromLogin", fromLogin,
+                    "toLogin", toLogin
+            ).increment();
+            throw exception;
+        }
     }
 
     private TransferResponse transferInternal(TransferRequest request) {
@@ -141,8 +178,7 @@ public class TransferService {
         }
     }
 
-    private void assertSenderOwner(Long accountId, Authentication authentication) {
-        String login = loginFrom(authentication);
+    private void assertSenderOwner(Long accountId, String login) {
         if (!accountClient.getAccount(accountId).login().equals(login)) {
             throw new AccessDeniedException("Access to another account is forbidden");
         }

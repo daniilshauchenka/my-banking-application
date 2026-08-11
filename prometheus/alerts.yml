@@ -1,0 +1,42 @@
+groups:
+  - name: my-bank-alerts
+    rules:
+      - alert: HighHttp5xxRate
+        expr: sum(rate(http_server_requests_seconds_count{status=~"5.."}[2m])) by (job) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx rate for {{ $labels.job }}"
+
+      - alert: HighHttpLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket[5m])) by (job, le)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 HTTP latency for {{ $labels.job }}"
+
+      - alert: CashWithdrawFailures
+        expr: increase(bank_cash_withdraw_failed_total[5m]) > 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cash withdraw failures increased"
+
+      - alert: TransferFailures
+        expr: increase(bank_transfer_failed_total[5m]) > 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Transfer failures increased"
+
+      - alert: NotificationFailures
+        expr: increase(bank_notification_failed_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Notification sending failed"

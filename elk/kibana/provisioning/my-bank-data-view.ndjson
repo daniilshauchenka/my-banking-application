@@ -1,0 +1,1 @@
+{"attributes":{"title":"my-bank-logs-*","timeFieldName":"@timestamp"},"coreMigrationVersion":"8.15.0","id":"my-bank-logs","migrationVersion":{"index-pattern":"8.0.0"},"references":[],"type":"index-pattern","updated_at":"2026-08-11T00:00:00.000Z","version":"WzEsMV0="}

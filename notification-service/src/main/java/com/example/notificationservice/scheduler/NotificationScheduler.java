@@ -2,6 +2,7 @@ package com.example.notificationservice.scheduler;
 
 import com.example.notificationservice.model.Notification;
 import com.example.notificationservice.repository.NotificationRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,21 +17,30 @@ import java.util.List;
 public class NotificationScheduler {
 
     private final NotificationRepository notificationRepository;
+    private final MeterRegistry meterRegistry;
 
     @Scheduled(fixedDelayString = "${app.notifications.scheduler-delay:5000}")
     @Transactional
     public void processNotifications() {
         List<Notification> notifications = notificationRepository.findTop20ByProcessedFalseOrderByCreatedAtAsc();
         for (Notification notification : notifications) {
-            log.info(
-                    "sent notification id={} eventType={} accountId={} amount={} message={}",
-                    notification.getId(),
-                    notification.getEventType(),
-                    notification.getAccountId(),
-                    notification.getAmount(),
-                    notification.getMessage()
-            );
-            notification.markProcessed();
+            try {
+                log.info(
+                        "sent notification id={} eventType={} accountId={} amount={} message={}",
+                        notification.getId(),
+                        notification.getEventType(),
+                        notification.getAccountId(),
+                        notification.getAmount(),
+                        notification.getMessage()
+                );
+                notification.markProcessed();
+            } catch (RuntimeException exception) {
+                meterRegistry.counter(
+                        "bank.notification.failed",
+                        "login", notification.getAccountId().toString()
+                ).increment();
+                log.error("notification sending failed id={} accountId={}", notification.getId(), notification.getAccountId(), exception);
+            }
         }
     }
 }
